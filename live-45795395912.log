@@ -1,0 +1,957 @@
+真实网络探针	跑真实源探针	﻿2026-11-26T09:48:40.6594630Z ##[group]Run swift test --package-path ReaderCore --filter LiveSourceProbeTests
+真实网络探针	跑真实源探针	2026-11-26T09:48:40.6595140Z ^[[36;1mswift test --package-path ReaderCore --filter LiveSourceProbeTests^[[0m
+真实网络探针	跑真实源探针	2026-11-26T09:48:40.6640440Z shell: /bin/bash -e {0}
+真实网络探针	跑真实源探针	2026-11-26T09:48:40.6640660Z env:
+真实网络探针	跑真实源探针	2026-11-26T09:48:40.6640820Z   PRIVATE_READER_LIVE: 1
+真实网络探针	跑真实源探针	2026-11-26T09:48:40.6641060Z ##[endgroup]
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0675760Z [0/1] Planning build
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0769770Z Building for debugging...
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0819760Z [0/6] Write sources
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0820380Z [0/6] Copying venera_init.js
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0820800Z [0/6] Copying 00shuge-search.html
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0831970Z [4/9] Copying bqg9-search.html
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0832580Z [4/9] Copying novel-sources.json
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.0833140Z [6/9] Copying tycqzw-search.html
+真实网络探针	跑真实源探针	2026-11-26T09:48:52.1803470Z [7/9] Write swift-version-7974D3F7F03D5E95.txt
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7608280Z [9/50] Compiling ReaderCore ChapterProvider.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7610050Z [10/50] Compiling ReaderCore ComicPageStore.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7611770Z [11/50] Compiling ReaderCore Paginator.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7613000Z [12/50] Compiling ReaderCore ProgressMath.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7647400Z [13/50] Compiling ReaderCore ReaderStyle.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7648030Z [14/50] Compiling ReaderCore ReadingPositionStore.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7655880Z [15/50] Compiling ReaderCore LegadoParser.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7679870Z [16/50] Compiling ReaderCore LegadoSource.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7680360Z [17/50] Compiling ReaderCore OnlineModels.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7721560Z [18/50] Compiling ReaderCore Purifier.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7722000Z [19/50] Compiling ReaderCore ImportService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7722380Z [20/50] Compiling ReaderCore NaturalSort.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7722770Z [21/50] Compiling ReaderCore ParsedContent.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7723130Z [22/50] Compiling ReaderCore PdfParser.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7723460Z [23/50] Compiling ReaderCore TextDecoder.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7723810Z [24/50] Compiling ReaderCore TxtParser.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7724770Z [25/50] Compiling ReaderCore XMLTree.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7725110Z [26/50] Compiling ReaderCore LibraryService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7725470Z [27/50] Compiling ReaderCore ShelfFilter.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.7725790Z [28/50] Compiling ReaderCore StatsService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8973330Z [29/59] Compiling ReaderCore AppInfo.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8974430Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8975180Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8975460Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8975780Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8976370Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8976850Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8977180Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8977360Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8978080Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8978930Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8979150Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8979510Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8980110Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8980710Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8981070Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8981240Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.8981660Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9089110Z [30/59] Compiling ReaderCore AppDatabase.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9089860Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9090630Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9090790Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9091050Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9091400Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9091720Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9091910Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9092010Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9092600Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9093340Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9093470Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9093720Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9094220Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9094730Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9094980Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9095050Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9095310Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9221340Z [31/59] Compiling ReaderCore Models.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9222060Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9223010Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9223170Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9223380Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9223670Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9223990Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9224180Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9224250Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9224850Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9225600Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9225730Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9225980Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9226500Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9227040Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9227370Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9227450Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9227710Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9341750Z [32/59] Compiling ReaderCore Repositories.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9342480Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9343060Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9343210Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9343430Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9343700Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9344460Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9344660Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9344730Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9345340Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9346060Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9346190Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9346440Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9346970Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9347680Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9347970Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9348070Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9348350Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9463470Z [33/59] Compiling ReaderCore ArchiveReader.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9464380Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9465190Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9465400Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9465690Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9466080Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9466490Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9466720Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9466860Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9467480Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9468630Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9468790Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9469100Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9469720Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9470260Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9470530Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9470710Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9471000Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9581910Z [34/59] Compiling ReaderCore CbzParser.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9582760Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9583380Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9583610Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9583900Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9584270Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9584630Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9584830Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9584900Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9585550Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9586330Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9586520Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9587190Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9587700Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9588270Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9588700Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9588780Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9589060Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9704220Z [35/59] Compiling ReaderCore ChapterSplitter.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9705030Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9705780Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9706030Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9706360Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9706730Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9707080Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9707290Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9707370Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9708000Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9708750Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9708890Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9714700Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9715350Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9716240Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9716490Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9716570Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9716820Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9874060Z [36/59] Compiling ReaderCore DirectoryScanner.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:53.9975740Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0083160Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0129320Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0129950Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0130730Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0131280Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0131740Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0131970Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0145900Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0147140Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0147590Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0148020Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0148870Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0149650Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0150080Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0150180Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0150490Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0151340Z [37/59] Compiling ReaderCore EpubParser.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0152070Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0152810Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0153010Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0153270Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0153570Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0153950Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0154200Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0154280Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0154900Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0155720Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0155850Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0156190Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0156870Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0157500Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0157820Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0157920Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0158220Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0306620Z [38/59] Compiling ReaderCore ImportLog.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0371310Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Data/Repositories.swift:12:13: warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0373550Z  10 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0373870Z  11 |     public func insert(_ book: Book) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0374180Z  12 |         var book = book
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0374930Z     |             `- warning: variable 'book' was never mutated; consider changing to 'let' constant
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0375830Z  13 |         try db.write { try book.insert($0) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0376140Z  14 |     }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0376990Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0377760Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Import/ArchiveReader.swift:9:29: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0379530Z  7 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0379820Z  8 |     public init(url: URL) throws {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0380180Z  9 |         guard let archive = Archive(url: url, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0380910Z    |                             `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0381980Z 10 |             throw ImportError.malformedArchive(url.lastPathComponent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0382660Z 11 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0382850Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.0383220Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4801300Z [39/59] Compiling ReaderCore RuleRunner.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4802300Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4803210Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4803530Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4803720Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4804030Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4804720Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4804890Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4805040Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4805660Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4806480Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4806760Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4807070Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4807630Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4808070Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4808210Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4808360Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4808810Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4809440Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4809720Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4815270Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4815740Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4816030Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4816180Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4816330Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4816800Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4817630Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4817830Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4818110Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4818500Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4818840Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4819070Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4819190Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4819640Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4820220Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4820430Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4820690Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4820960Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4821250Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4821440Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4821560Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.4821810Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5647830Z [40/59] Compiling ReaderCore SearchCoordinator.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5648540Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5649150Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5649660Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5649850Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5650160Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5650440Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5650610Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5650760Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5651570Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5652570Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5652950Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5653340Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5654070Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5654620Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5654810Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5655010Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5655650Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5656470Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5656760Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5657190Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5657660Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5658330Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5658520Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5658710Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5659230Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5660090Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5660470Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5660830Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5661350Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5661790Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5662020Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5662170Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5662760Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5663530Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5663810Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5664140Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5664520Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5664900Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5665150Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5665300Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.5665660Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6440840Z [41/59] Compiling ReaderCore SourceArchive.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6442970Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6445610Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6446090Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6446530Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6447240Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6447890Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6448290Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6448630Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6450060Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6451970Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6452630Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6453380Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6454640Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6455650Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6455990Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6456330Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6457370Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6458840Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6459470Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6470930Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6472600Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6473250Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6473810Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6474160Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6475250Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6476630Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6477080Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6477730Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6478640Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6479420Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6479890Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6480160Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6481350Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6483040Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6483860Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6484590Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6485270Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6485980Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6486460Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6486730Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.6487330Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7231590Z [42/59] Compiling ReaderCore SourceClient.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7233160Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7234590Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7235050Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7235480Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7236160Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7236800Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7237200Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7237530Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7238930Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7240840Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7241480Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7242190Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7243420Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7244420Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7244760Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7245330Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7246550Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7248090Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7249880Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7250600Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7251480Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7252120Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7252460Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7252880Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7253990Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7255370Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7255840Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7256520Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7257460Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7258230Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7258680Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7258960Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7260010Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7261390Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7261890Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7262490Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7263120Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7263790Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7264830Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7265120Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.7265690Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8139500Z [43/59] Compiling ReaderCore SourceHealthChecker.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8140330Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8141070Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8141380Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8141620Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8142080Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8142400Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8142620Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8142810Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8143560Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8144520Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8144800Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8145110Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8145650Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8146080Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8146220Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8146380Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8146820Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8153790Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8154170Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8154480Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8154860Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8155130Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8155280Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8155430Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8155890Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8156470Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8156670Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8156960Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8157350Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8157670Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8157870Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8157990Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8158440Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8159000Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8159240Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8159580Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8160130Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8160420Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8160610Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8160720Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.8160980Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9199270Z [44/59] Compiling ReaderCore SourceRepository.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9333970Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9434340Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9557580Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9658400Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9658990Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9664340Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9668470Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9668640Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9669450Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9670590Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9670920Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9671350Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9672610Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9673190Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9674730Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9674920Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9675520Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9676190Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9676520Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9676940Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9677440Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9677740Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9677930Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9678130Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9679330Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9680920Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9681270Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9681610Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9682860Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9683300Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9683580Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9683730Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9684300Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9685670Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9686410Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9686760Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9687370Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9688010Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9688240Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9688380Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:54.9688720Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.0168570Z [45/59] Compiling ReaderCore VeneraImportService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.0300690Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.0424860Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.0565010Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.0668710Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.0808140Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.0947580Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1062920Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1183940Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1367110Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1489050Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1611000Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1719510Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1821100Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1822030Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.1922810Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2023450Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2124610Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2231520Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2332330Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2433130Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2533920Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2634710Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2735430Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2823470Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.2927280Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3056290Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3157240Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3258550Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3366830Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3467520Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3568470Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3679750Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3784980Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3786090Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3786320Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3786580Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3786860Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3787160Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3787350Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3787470Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3787750Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3788190Z [46/59] Compiling ReaderCore VeneraModels.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3896070Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.3999830Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4112770Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4213820Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4221340Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4221760Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4222630Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4282960Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4283920Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4340620Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4441730Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4464040Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4464790Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4465840Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4491000Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4491310Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4491940Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4492760Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4493170Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4493610Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4494120Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4494500Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4494750Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4494990Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4495540Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4496230Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4496510Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4496900Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4497420Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4497880Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4498680Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4498920Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4499490Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4500190Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4500540Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4500930Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4501310Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4501730Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4502080Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4502290Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4502670Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4503210Z [47/59] Compiling ReaderCore VeneraRuntime.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4503910Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4504650Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4504970Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4505290Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4505700Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4506100Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4506510Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4506820Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4507530Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4508710Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4509090Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4509590Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4510250Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4510770Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4511010Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4511250Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4511780Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4512510Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4518910Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4519330Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4519840Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4520200Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4520440Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4520680Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4521230Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4522030Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4522330Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4522710Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4523430Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4523860Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4524150Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4524360Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4524890Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4525550Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4525860Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4526220Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4526620Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4527010Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4527310Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4527510Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4527850Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4528340Z [48/59] Compiling ReaderCore SentenceSplitter.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4529030Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/RuleRunner.swift:204:21: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4529710Z 202 |             return (try? element.text()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4530020Z 203 |         case "ownText":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4530310Z 204 |             return (try? element.ownText()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4530810Z     |                     `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4531180Z 205 |         case "html":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4531440Z 206 |             return (try? element.html()) ?? ""
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4531680Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4532370Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4533500Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4533870Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4534280Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4534920Z    |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4535430Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4535670Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4535910Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4536470Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/SourceArchive.swift:15:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4537200Z 13 |         defer { try? FileManager.default.removeItem(at: temp) }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4537560Z 14 |         guard (try? archiveData.write(to: temp)) != nil,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4538030Z 15 |               let archive = try? Archive(url: temp, accessMode: .read) else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4538510Z    |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4538870Z 16 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4539110Z 17 |         let marker = Data("bookSourceName".utf8)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4539350Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4539960Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:711:49: warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4540630Z 709 |         case "getParent":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4541030Z 710 |             guard let element = store.elements[key],
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4541410Z 711 |                   let parent = element.parent() as? Element else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4541900Z     |                                                 `- warning: conditional downcast from 'Element?' to 'Element' does nothing
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4542320Z 712 |             return store.id(for: parent)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4542610Z 713 |         case "getClassNames":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4542840Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4543380Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/SourceEngine/VeneraRuntime.swift:718:22: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4544040Z 716 |         case "getId":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4544340Z 717 |             guard let element = store.elements[key] else { return nil }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4544690Z 718 |             let id = try element.id()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4545060Z     |                      `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4545450Z 719 |             return id.isEmpty ? nil : id
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4545730Z 720 |         case "getLocalName":
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4545930Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4546310Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4546890Z [49/59] Emitting module ReaderCore
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4547190Z [50/59] Compiling ReaderCore SpeechStartLocator.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4548020Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4548820Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4549090Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4549630Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4550340Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4550930Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4551210Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4551370Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4551890Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4552540Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4552800Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4553210Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4553710Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4554110Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4554390Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4554560Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4554880Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4555360Z [51/59] Compiling ReaderCore BackupService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4556180Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4561060Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4561400Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4561820Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4562400Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4563030Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4563210Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4563290Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4563720Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4564270Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4564440Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4564770Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4565150Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4565450Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4565630Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4565700Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4565940Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4566320Z [52/59] Compiling ReaderCore CoverStore.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4567300Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4568740Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4568940Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4569290Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4569910Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4570460Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4570760Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4570880Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4571340Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4572100Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4572280Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4572600Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4573000Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4573310Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4573490Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4573560Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4573810Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4574210Z [53/59] Compiling ReaderCore OnlineBookService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4574950Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4575690Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4575860Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4576180Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4576720Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4577180Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4577380Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4577480Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4578000Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4578910Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4579070Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4579400Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4579770Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4580080Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4580260Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4580330Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4580570Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4580960Z [54/59] Compiling ReaderCore OnlineLibrary.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4581920Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4582650Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4582820Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4583140Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4583800Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4584250Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4584440Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4584510Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4585070Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4585740Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4585910Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4586230Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4586820Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4587180Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4587430Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4587510Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4587820Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4588300Z [55/59] Compiling ReaderCore OnlineReadingService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4589130Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4589830Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4589990Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4590320Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4590850Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4591300Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4591490Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4591560Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4591990Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4592540Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4592700Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4593030Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4593410Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4593790Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4598760Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4598850Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4599090Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4599470Z [56/59] Compiling ReaderCore SandboxPaths.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4600200Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4601590Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4601830Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4602260Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4602820Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4603310Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4603550Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4603670Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4604220Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4604960Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4605150Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4605610Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4606110Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4606470Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4606710Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4606790Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4607120Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4608330Z [57/59] Compiling ReaderCore StorageService.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4609060Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4609970Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4610140Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4610460Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4610990Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4611440Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4611630Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4611700Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4612140Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4612690Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4612860Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4613180Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4613570Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4613970Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4614170Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4614240Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4614480Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4627280Z [58/59] Compiling ReaderCore UpdateChecker.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4628530Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:34: warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4629310Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4629490Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4629820Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4630370Z     |                                  `- warning: 'init(url:accessMode:preferredEncoding:)' is deprecated: Please use the throwing initializer. [#DeprecatedDeclaration]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4630820Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4631020Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4631130Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4631650Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Sources/ReaderCore/Storage/BackupService.swift:252:29: warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4632220Z 250 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4632390Z 251 |     private func extract(_ archiveURL: URL) throws -> URL {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4632720Z 252 |         guard let archive = try? Archive(url: archiveURL, accessMode: .read) else {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4633090Z     |                             `- warning: no calls to throwing functions occur within 'try' expression
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4633400Z 253 |             throw BackupError.unreadable
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4633580Z 254 |         }
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4633660Z 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.4633910Z [#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5497380Z [59/87] Compiling ReaderCoreTests ReadingPositionTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5498400Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/ReadingPositionTests.swift:56:9: warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5499090Z  54 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5499550Z  55 |     func testRestoreReturnsNilWhenNoChapters() {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5499830Z  56 |         try? store.save(bookId: "b1",
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5501120Z     |         `- warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5501540Z  57 |                         position: ReadingPosition(chapterIndex: 2, pageIndex: 0),
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5501830Z  58 |                         pageCount: 3,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5514940Z [60/87] Compiling ReaderCoreTests RepositoryTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5516000Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/ReadingPositionTests.swift:56:9: warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5516630Z  54 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5522460Z  55 |     func testRestoreReturnsNilWhenNoChapters() {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5522800Z  56 |         try? store.save(bookId: "b1",
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5523120Z     |         `- warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5523600Z  57 |                         position: ReadingPosition(chapterIndex: 2, pageIndex: 0),
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5524230Z  58 |                         pageCount: 3,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5535080Z [61/87] Compiling ReaderCoreTests RuleRunnerTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5536120Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/ReadingPositionTests.swift:56:9: warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5536750Z  54 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5536920Z  55 |     func testRestoreReturnsNilWhenNoChapters() {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5537150Z  56 |         try? store.save(bookId: "b1",
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5537380Z     |         `- warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5537680Z  57 |                         position: ReadingPosition(chapterIndex: 2, pageIndex: 0),
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5537940Z  58 |                         pageCount: 3,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5555990Z [62/87] Compiling ReaderCoreTests SandboxPathsTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5557050Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/ReadingPositionTests.swift:56:9: warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5568530Z  54 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5568790Z  55 |     func testRestoreReturnsNilWhenNoChapters() {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5569060Z  56 |         try? store.save(bookId: "b1",
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5569290Z     |         `- warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5569600Z  57 |                         position: ReadingPosition(chapterIndex: 2, pageIndex: 0),
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5569870Z  58 |                         pageCount: 3,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5576350Z [63/87] Compiling ReaderCoreTests SearchCoordinatorTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5576980Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/ReadingPositionTests.swift:56:9: warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5577500Z  54 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5577680Z  55 |     func testRestoreReturnsNilWhenNoChapters() {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5577920Z  56 |         try? store.save(bookId: "b1",
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5578150Z     |         `- warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5578440Z  57 |                         position: ReadingPosition(chapterIndex: 2, pageIndex: 0),
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5578710Z  58 |                         pageCount: 3,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5595490Z [64/87] Compiling ReaderCoreTests ShelfFilterTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5596080Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/ReadingPositionTests.swift:56:9: warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5596600Z  54 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5596760Z  55 |     func testRestoreReturnsNilWhenNoChapters() {
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5596990Z  56 |         try? store.save(bookId: "b1",
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5597210Z     |         `- warning: result of 'try?' is unused [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5597510Z  57 |                         position: ReadingPosition(chapterIndex: 2, pageIndex: 0),
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5598000Z  58 |                         pageCount: 3,
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5614760Z [65/87] Compiling ReaderCoreTests LiveSourceProbeTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5615880Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:102:13: warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5616780Z 100 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5616930Z 101 |         let database = try AppDatabase.inMemory()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5617260Z 102 |         let service = SourceImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5617830Z     |             `- warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5618410Z 103 |         let summary = try await VeneraImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5618820Z 104 |             .importIndex(indexData, indexURL: indexURL, category: .comic)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5664170Z [66/87] Compiling ReaderCoreTests NovelRuleFixtureTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5665130Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:102:13: warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5665900Z 100 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5666060Z 101 |         let database = try AppDatabase.inMemory()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5666380Z 102 |         let service = SourceImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5666950Z     |             `- warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5667950Z 103 |         let summary = try await VeneraImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5668360Z 104 |             .importIndex(indexData, indexURL: indexURL, category: .comic)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5716000Z [67/87] Compiling ReaderCoreTests OnlineBookServiceTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5717070Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:102:13: warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5717850Z 100 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5718000Z 101 |         let database = try AppDatabase.inMemory()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5718330Z 102 |         let service = SourceImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5718890Z     |             `- warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5719490Z 103 |         let summary = try await VeneraImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5719900Z 104 |             .importIndex(indexData, indexURL: indexURL, category: .comic)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5771160Z [68/87] Compiling ReaderCoreTests OnlineLibraryTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5772010Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:102:13: warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5772760Z 100 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5772920Z 101 |         let database = try AppDatabase.inMemory()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5773250Z 102 |         let service = SourceImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5773820Z     |             `- warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5774610Z 103 |         let summary = try await VeneraImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5775010Z 104 |             .importIndex(indexData, indexURL: indexURL, category: .comic)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5824810Z [69/87] Compiling ReaderCoreTests OnlineReadingServiceTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5825860Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:102:13: warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5826620Z 100 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5826790Z 101 |         let database = try AppDatabase.inMemory()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5827120Z 102 |         let service = SourceImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5827680Z     |             `- warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5828410Z 103 |         let summary = try await VeneraImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5828850Z 104 |             .importIndex(indexData, indexURL: indexURL, category: .comic)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5878630Z [70/87] Compiling ReaderCoreTests PurifierTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5879630Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:102:13: warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5880530Z 100 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5880740Z 101 |         let database = try AppDatabase.inMemory()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5881270Z 102 |         let service = SourceImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5881900Z     |             `- warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5882870Z 103 |         let summary = try await VeneraImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5883270Z 104 |             .importIndex(indexData, indexURL: indexURL, category: .comic)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5938540Z [71/87] Compiling ReaderCoreTests ReaderCoreTests_Reader.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5939630Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:102:13: warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5940480Z 100 | 
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5940670Z 101 |         let database = try AppDatabase.inMemory()
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5941090Z 102 |         let service = SourceImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5941670Z     |             `- warning: initialization of immutable value 'service' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5942380Z 103 |         let summary = try await VeneraImportService(repo: SourceRepository(db: database.writer))
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5948100Z 104 |             .importIndex(indexData, indexURL: indexURL, category: .comic)
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5996310Z [72/87] Compiling ReaderCoreTests SourceClientTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5997080Z [73/87] Compiling ReaderCoreTests SourceEngineTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5997740Z [74/87] Compiling ReaderCoreTests SourceFormatTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5998430Z [75/87] Compiling ReaderCoreTests SourceHealthCheckerTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5999230Z [76/87] Compiling ReaderCoreTests SourceImportFixtureTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.5999980Z [77/87] Compiling ReaderCoreTests SourceRepositoryTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6000710Z [78/87] Compiling ReaderCoreTests ArchiveImportTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6001360Z [79/87] Compiling ReaderCoreTests BackupServiceTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6002920Z [80/87] Compiling ReaderCoreTests ComicPageStoreTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6003600Z [81/87] Compiling ReaderCoreTests CoverStoreTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6004240Z [82/87] Compiling ReaderCoreTests DatabaseTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6004840Z [83/87] Compiling ReaderCoreTests ImportEntryTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6005450Z [84/87] Compiling ReaderCoreTests ImportFixtures.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:55.6005990Z [85/87] Emitting module ReaderCoreTests
+真实网络探针	跑真实源探针	2026-11-26T09:48:56.1278790Z [86/93] Compiling ReaderCoreTests SpeechTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:56.1279270Z [87/93] Compiling ReaderCoreTests StatsServiceTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:56.1279630Z [88/93] Compiling ReaderCoreTests StorageServiceTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:56.1279980Z [89/93] Compiling ReaderCoreTests TextImportTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:56.1280330Z [90/93] Compiling ReaderCoreTests UpdateCheckerTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:56.1280620Z [91/93] Compiling ReaderCoreTests VeneraRuntimeTests.swift
+真实网络探针	跑真实源探针	2026-11-26T09:48:56.2536300Z [91/93] Write Objects.LinkFileList
+真实网络探针	跑真实源探针	2026-11-26T09:48:57.3342170Z [92/93] Linking ReaderCorePackageTests
+真实网络探针	跑真实源探针	2026-11-26T09:48:57.3442270Z Build complete! (9.58s)
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2004120Z Test Suite 'Selected tests' started at 2026-11-26 09:48:57.683.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2005440Z Test Suite 'ReaderCorePackageTests.xctest' started at 2026-11-26 09:48:57.685.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2006040Z Test Suite 'LiveSourceProbeTests' started at 2026-11-26 09:48:57.685.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2006510Z Test Case '-[ReaderCoreTests.LiveSourceProbeTests testNovelRulesParseRealHTML]' started.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2009820Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:83: error: -[ReaderCoreTests.LiveSourceProbeTests testNovelRulesParseRealHTML] : XCTAssertFalse failed - 笔趣阁 bqg9 第一本没有书名
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2011040Z Test Case '-[ReaderCoreTests.LiveSourceProbeTests testNovelRulesParseRealHTML]' failed (121.010 seconds).
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2012570Z Test Case '-[ReaderCoreTests.LiveSourceProbeTests testThreeNovelSourcesRealSearchDetailAndContent]' started.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2014660Z /Users/runner/work/privatereader-v2/privatereader-v2/ReaderCore/Tests/ReaderCoreTests/LiveSourceProbeTests.swift:62: error: -[ReaderCoreTests.LiveSourceProbeTests testThreeNovelSourcesRealSearchDetailAndContent] : XCTAssertTrue failed - 有源失败：00小说网: The request timed out.；天域小说网: The request timed out.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2015920Z Test Case '-[ReaderCoreTests.LiveSourceProbeTests testThreeNovelSourcesRealSearchDetailAndContent]' failed (45.182 seconds).
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2016610Z Test Case '-[ReaderCoreTests.LiveSourceProbeTests testVeneraIndexImportAndCopyMangaRuntime]' started.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2017330Z Test Case '-[ReaderCoreTests.LiveSourceProbeTests testVeneraIndexImportAndCopyMangaRuntime]' passed (19.221 seconds).
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2018000Z Test Suite 'LiveSourceProbeTests' failed at 2026-11-26 09:52:03.099.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2018470Z 	 Executed 3 tests, with 2 failures (0 unexpected) in 185.413 (185.414) seconds
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2019060Z Test Suite 'ReaderCorePackageTests.xctest' failed at 2026-11-26 09:52:03.099.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2019540Z 	 Executed 3 tests, with 2 failures (0 unexpected) in 185.413 (185.414) seconds
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2019990Z Test Suite 'Selected tests' failed at 2026-11-26 09:52:03.099.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2020500Z 	 Executed 3 tests, with 2 failures (0 unexpected) in 185.413 (185.416) seconds
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2021070Z [LIVE][PARSE] 笔趣阁 bqg9: HTTP 200, 20446 字节, html 18543 字符, grid=true, 50 行, 第一本 
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2021610Z [LIVE][PARSE][FAIL] 天域小说网: The request timed out.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2021900Z [LIVE][PARSE][FAIL] 00小说网: The request timed out.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2022290Z [LIVE][FAIL] 00小说网: The request timed out.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2022670Z [LIVE][FAIL] 天域小说网: The request timed out.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2022930Z [LIVE] 笔趣阁 bqg9: 49 本 / 1676 章 / 7417 字
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2023280Z [LIVE] Venera 索引导入：新增 31，失败 0，备注 无
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2024650Z [LIVE] CopyManga 搜索：30 本，第一本 CROWS海賊版
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2025110Z [LIVE] CopyManga 详情：CROWS海賊版，1 章
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2025390Z [LIVE] CopyManga 图片：126 张
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2025590Z ◇ Test run started.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2025820Z ↳ Testing Library Version: 1902
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2026230Z ↳ Target Platform: arm64e-apple-macos14.0
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2026680Z ✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
+真实网络探针	跑真实源探针	2026-11-26T09:52:03.2048150Z ##[error]Process completed with exit code 1.
