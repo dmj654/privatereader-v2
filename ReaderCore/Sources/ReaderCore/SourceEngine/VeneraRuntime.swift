@@ -49,7 +49,18 @@ public final class VeneraRuntime: @unchecked Sendable {
                        page: Int = 1,
                        timeout: TimeInterval = 30) async throws -> [OnlineBook] {
         let result = try await perform(source: source, timeout: timeout, call: """
-        JSON.stringify(await __source.search.load(\(jsLiteral(keyword)), [], \(max(1, page))))
+        await (async () => {
+            const api = __source.search || {};
+            let value;
+            if (typeof api.load === 'function') {
+                value = await api.load(\(jsLiteral(keyword)), [], \(max(1, page)));
+            } else if (typeof api.loadNext === 'function') {
+                value = await api.loadNext(\(jsLiteral(keyword)), [], null);
+            } else {
+                throw '源没有实现 search.load 或 search.loadNext';
+            }
+            return JSON.stringify(value);
+        })()
         """)
         let decoded = jsonValue(result)
         guard let object = decoded as? [String: Any] else {
