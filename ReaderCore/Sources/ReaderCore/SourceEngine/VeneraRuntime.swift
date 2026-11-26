@@ -85,10 +85,25 @@ public final class VeneraRuntime: @unchecked Sendable {
         let result = try await perform(source: source, timeout: timeout, call: """
         await (async () => {
             const d = await __source.comic.loadInfo(\(jsLiteral(comicId)));
-            if (d && d.chapters && !Array.isArray(d.chapters)) {
-                d.chapters = d.chapters instanceof Map
-                    ? Array.from(d.chapters.entries())
-                    : Object.entries(d.chapters);
+            if (d && d.chapters) {
+                const flatten = (value) => {
+                    if (Array.isArray(value)) return value;
+                    let entries;
+                    if (value instanceof Map) entries = Array.from(value.entries());
+                    else if (value && typeof value === 'object') entries = Object.entries(value);
+                    else return [];
+                    const out = [];
+                    for (const [key, item] of entries) {
+                        if (item instanceof Map || (item && typeof item === 'object' && !Array.isArray(item))) {
+                            const sub = item instanceof Map ? Array.from(item.entries()) : Object.entries(item);
+                            for (const [subKey, subValue] of sub) out.push([subKey, subValue]);
+                        } else {
+                            out.push([key, item]);
+                        }
+                    }
+                    return out;
+                };
+                d.chapters = flatten(d.chapters);
             }
             return JSON.stringify(d);
         })()
