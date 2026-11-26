@@ -14,6 +14,8 @@ final class AppEnvironment: ObservableObject {
     let sources: SourceRepository
     let sessions: SessionRepository
     let cache: CacheRepository
+    /// Venera JavaScript 漫画源运行时。搜索/详情/图片都走独立上下文。
+    let veneraRuntime: VeneraRuntime
     let sourceClient: SourceClient
     let onlineReading: OnlineReadingService
     let library: LibraryService
@@ -46,11 +48,14 @@ final class AppEnvironment: ObservableObject {
         self.cache = CacheRepository(db: database.writer)
         let sourceClient = SourceClient()
         self.sourceClient = sourceClient
+        let runtime = VeneraRuntime()
+        self.veneraRuntime = runtime
         self.library = LibraryService(books: BookRepository(db: database.writer), paths: paths)
         let onlineReading = OnlineReadingService(
             library: OnlineLibrary(paths: paths),
             sources: SourceRepository(db: database.writer),
-            client: sourceClient
+            client: sourceClient,
+            venera: runtime
         )
         self.onlineReading = onlineReading
         self.chapterProvider = ChapterProvider(paths: paths, online: onlineReading)

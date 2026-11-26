@@ -14,7 +14,7 @@ struct OnlineComicView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var manifest: OnlineManifest?
-    @State private var source: LegadoSource?
+    @State private var source: SearchTarget?
     @State private var chapterIndex = 0
     @State private var pages: [String] = []
     @State private var headers: [String: String] = [:]
@@ -248,8 +248,9 @@ struct OnlineComicView: View {
     }
 
     private var sourceURL: URL? {
-        guard let raw = manifest?.bookUrl, !raw.isEmpty else { return nil }
-        return URL(string: raw)
+        guard let source, case .legado(let legado) = source else { return nil }
+        let raw = legado.url
+        return raw.isEmpty ? nil : URL(string: raw)
     }
 
     private func loadInitial() {
@@ -259,13 +260,16 @@ struct OnlineComicView: View {
             self.manifest = manifest
 
             let record = try env.sources.fetch(id: manifest.sourceId)
-            let executable = record.flatMap {
-                SourceImportService(repo: env.sources).executable(from: $0)
+            let target = record.flatMap {
+                SourceImportService(repo: env.sources).target(from: $0)
             }
-            source = executable
-            if let executable {
-                headers = env.sourceClient.imageHeaders(source: executable)
-            } else {
+            source = target
+            switch target {
+            case .some(.legado(let legado)):
+                headers = env.sourceClient.imageHeaders(source: legado)
+            case .some(.venera):
+                headers = env.veneraRuntime.imageHeaders
+            case .none:
                 errorMessage = "这本书所属的书源已被删除。"
             }
 
@@ -303,6 +307,7 @@ struct OnlineComicView: View {
 
         let chapter = chapters[chapterIndex]
         let source = self.source
+        let comicId = manifest?.bookUrl ?? ""
         Task {
             guard let source else {
                 await MainActor.run {
@@ -312,7 +317,17 @@ struct OnlineComicView: View {
                 return
             }
             do {
-                let urls = try await env.sourceClient.comicPages(source: source, chapter: chapter)
+                let urls: [String]
+                switch source {
+                case .legado(let legado):
+                    urls = try await env.sourceClient.comicPages(source: legado, chapter: chapter)
+                case .venera(let script):
+                    urls = try await env.veneraRuntime.pages(
+                        source: script,
+                        comicId: comicId,
+                        epId: chapter.url
+                    )
+                }
                 await MainActor.run {
                     pages = urls
                     isLoading = false

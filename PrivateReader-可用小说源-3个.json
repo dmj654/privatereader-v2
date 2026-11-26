@@ -4,7 +4,7 @@
     "bookSourceUrl": "https://www.00shuge.com",
     "bookSourceGroup": "已验证·小说",
     "bookSourceType": 0,
-    "bookSourceComment": "2026-11-26 实测：搜索《斗破苍穹》→详情→1651 章目录→正文均返回 200。站点为 HTTP 站，正文偶有“最新网址”提示。",
+    "bookSourceComment": "2026-11-26 实测：搜索《斗破苍穹》→详情→1651 章目录→正文均返回 200。正文开头偶有“最新网址”提示，已用净化规则去掉提示文字。",
     "enabled": true,
     "enabledExplore": false,
     "searchUrl": "https://www.00shuge.com/modules/article/search.php?q={{key}}",

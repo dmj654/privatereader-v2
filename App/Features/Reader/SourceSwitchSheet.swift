@@ -152,7 +152,7 @@ final class SourceSwitchModel: ObservableObject {
     @Published var isSwitching = false
     @Published var errorMessage: String?
 
-    private var sources: [String: LegadoSource] = [:]
+    private var sources: [String: SearchTarget] = [:]
     private var seen = Set<String>()
     private var task: Task<Void, Never>?
 
@@ -163,11 +163,11 @@ final class SourceSwitchModel: ObservableObject {
     func search(env: AppEnvironment) {
         guard task == nil else { return }
         task = Task {
-            let enabled: [LegadoSource]
+            let enabled: [SearchTarget]
             do {
                 let repo = env.sources
                 enabled = try await Task.detached(priority: .userInitiated) {
-                    try SourceImportService(repo: repo).enabledSources()
+                    try SourceImportService(repo: repo).enabledTargets()
                 }.value.filter { $0.isComic == (book.type == .comic) }
             } catch {
                 isSearching = false
@@ -182,7 +182,8 @@ final class SourceSwitchModel: ObservableObject {
                 return
             }
 
-            let coordinator = SearchCoordinator(client: env.sourceClient)
+            let coordinator = SearchCoordinator(client: env.sourceClient,
+                                                venera: env.veneraRuntime)
             for await result in await coordinator.search(sources: enabled, key: book.title) {
                 finished += 1
                 guard result.errorText == nil else { continue }
@@ -206,9 +207,18 @@ final class SourceSwitchModel: ObservableObject {
         do {
             let service = OnlineBookService(
                 client: env.sourceClient,
-                library: OnlineLibrary(paths: env.paths)
+                library: OnlineLibrary(paths: env.paths),
+                venera: env.veneraRuntime
             )
-            let updated = try await service.switchSource(book: book, to: row.entry, source: source)
+            let updated: Book
+            switch source {
+            case .legado(let legado):
+                updated = try await service.switchSource(book: book, to: row.entry, source: legado)
+            case .venera(let script):
+                updated = try await service.switchSourceVenera(
+                    book: book, to: row.entry, source: script, runtime: env.veneraRuntime
+                )
+            }
             try env.books.upsert(updated)
             return updated
         } catch {

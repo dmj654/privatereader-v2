@@ -131,6 +131,14 @@ public final class AppDatabase {
             }
         }
 
+        migrator.registerMigration("v2") { db in
+            // 1.7.3 起源表同时承载 legado 与 Venera 两套引擎。
+            // 老库里的源一律标记为 legado；Venera 源导入时写 venera。
+            try db.alter(table: "source") { t in
+                t.add(column: "engine", .text).notNull().defaults(to: "legado")
+            }
+        }
+
         return migrator
     }
 }

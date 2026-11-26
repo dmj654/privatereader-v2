@@ -497,12 +497,17 @@ struct SourcesView: View {
         checking.insert(source.id)
 
         Task {
-            let executable = SourceImportService(repo: env.sources).executable(from: source)
+            let service = SourceImportService(repo: env.sources)
+            let target = service.target(from: source)
             let status: SourceHealthStatus
-            if let executable {
+            switch target {
+            case .legado(let executable):
                 status = await SourceHealthChecker(client: env.sourceClient).check(executable)
-            } else {
-                status = .failed("书源 JSON 解析失败，建议重新导入")
+            case .venera(let script):
+                status = await SourceHealthChecker(client: env.sourceClient,
+                                                   venera: env.veneraRuntime).check(script)
+            case nil:
+                status = .failed("书源解析失败，建议重新导入")
             }
             await MainActor.run {
                 health[source.id] = status
@@ -541,10 +546,15 @@ struct SourcesView: View {
                 for _ in 0..<width {
                     guard let source = iterator.next() else { break }
                     group.addTask {
-                        guard let executable = service.executable(from: source) else {
+                        guard let target = service.target(from: source) else {
                             return (source.id, nil)
                         }
-                        return (source.id, await checker.check(executable))
+                        switch target {
+                        case .legado(let executable):
+                            return (source.id, await checker.check(executable))
+                        case .venera(let script):
+                            return (source.id, await checker.check(script))
+                        }
                     }
                 }
 
@@ -563,10 +573,15 @@ struct SourcesView: View {
                     }
                     if let source = iterator.next() {
                         group.addTask {
-                            guard let executable = service.executable(from: source) else {
+                            guard let target = service.target(from: source) else {
                                 return (source.id, nil)
                             }
-                            return (source.id, await checker.check(executable))
+                            switch target {
+                            case .legado(let executable):
+                                return (source.id, await checker.check(executable))
+                            case .venera(let script):
+                                return (source.id, await checker.check(script))
+                            }
                         }
                     }
                 }

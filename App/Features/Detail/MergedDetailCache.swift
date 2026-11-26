@@ -11,7 +11,7 @@ final class MergedDetailCache {
 
     struct Snapshot {
         var chosen: OnlineBook
-        var source: LegadoSource
+        var source: SearchTarget
         var sourceName: String
         var chapters: [OnlineChapter]
         var intro: String

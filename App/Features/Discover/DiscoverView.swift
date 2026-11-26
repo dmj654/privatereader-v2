@@ -287,8 +287,8 @@ struct DiscoverView: View {
             return
         }
 
-        let enabled = (try? SourceImportService(repo: env.sources).enabledSources()) ?? []
-        let wanted = enabled.filter { ($0.type == 2) == wantsComic }
+        let enabled = (try? SourceImportService(repo: env.sources).enabledTargets()) ?? []
+        let wanted = enabled.filter { $0.isComic == wantsComic }
         guard !wanted.isEmpty else {
             maintenanceMessage = "当前分类没有启用的\(kindTitle)。"
             return
@@ -300,15 +300,23 @@ struct DiscoverView: View {
         maintenanceMessage = nil
 
         let repo = env.sources
-        let checker = SourceHealthChecker(client: env.sourceClient)
+        let checker = SourceHealthChecker(client: env.sourceClient, venera: env.veneraRuntime)
 
         checkTask = Task {
             await withTaskGroup(of: (String, SourceHealthStatus).self) { group in
                 var iterator = wanted.makeIterator()
                 let width = min(8, wanted.count)
+
+                func status(for target: SearchTarget) async -> SourceHealthStatus {
+                    switch target {
+                    case .legado(let source): return await checker.check(source)
+                    case .venera(let source): return await checker.check(source)
+                    }
+                }
+
                 for _ in 0..<width {
                     guard let source = iterator.next() else { break }
-                    group.addTask { (source.id, await checker.check(source)) }
+                    group.addTask { (source.id, await status(for: source)) }
                 }
 
                 while let (id, status) = await group.next() {
@@ -325,7 +333,7 @@ struct DiscoverView: View {
                         checkedCount += 1
                     }
                     if let source = iterator.next() {
-                        group.addTask { (source.id, await checker.check(source)) }
+                        group.addTask { (source.id, await status(for: source)) }
                     }
                 }
             }

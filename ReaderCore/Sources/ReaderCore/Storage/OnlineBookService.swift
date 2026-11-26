@@ -17,10 +17,12 @@ public struct OnlineBookBundle: Sendable {
 /// 一本两千章的书全下完要几百 MB，而用户可能只看到第 30 章。
 public actor OnlineBookService {
     private let client: SourceClient
+    private let venera: VeneraRuntime
     private let library: OnlineLibrary
 
-    public init(client: SourceClient, library: OnlineLibrary) {
+    public init(client: SourceClient, library: OnlineLibrary, venera: VeneraRuntime = VeneraRuntime()) {
         self.client = client
+        self.venera = venera
         self.library = library
     }
 
@@ -105,6 +107,90 @@ public actor OnlineBookService {
         updated.chapterCount = toc.count
         updated.newChapterCount = 0
         return updated
+    }
+
+    // MARK: Venera 漫画
+
+    public func prepareVenera(_ online: OnlineBook,
+                              source: VeneraSource,
+                              runtime: VeneraRuntime) async throws -> OnlineBookBundle {
+        let detail = try await runtime.detail(source: source, comicId: online.bookUrl)
+        guard !detail.chapters.isEmpty else { throw SourceError.emptyRule("目录是空的") }
+
+        let bookId = UUID().uuidString
+        let manifest = OnlineManifest(
+            bookId: bookId,
+            sourceId: source.id,
+            bookUrl: detail.comicId,
+            tocUrl: detail.comicId,
+            title: detail.title,
+            author: detail.author,
+            coverUrl: detail.coverUrl,
+            intro: detail.intro,
+            kind: detail.kind,
+            chapters: detail.chapters
+        )
+        let relativePath = try library.save(manifest)
+        let book = Book(
+            id: bookId,
+            type: .comic,
+            origin: .remote,
+            title: detail.title,
+            author: detail.author.isEmpty ? nil : detail.author,
+            coverPath: nil,
+            filePath: relativePath,
+            sourceId: source.id,
+            sourceBookId: detail.comicId,
+            sourceUrl: detail.comicId,
+            chapterCount: detail.chapters.count
+        )
+        return OnlineBookBundle(book: book, manifest: manifest)
+    }
+
+    public func switchSourceVenera(book: Book,
+                                   to online: OnlineBook,
+                                   source: VeneraSource,
+                                   runtime: VeneraRuntime) async throws -> Book {
+        let detail = try await runtime.detail(source: source, comicId: online.bookUrl)
+        guard !detail.chapters.isEmpty else { throw SourceError.emptyRule("目录是空的") }
+
+        let manifest = OnlineManifest(
+            bookId: book.id,
+            sourceId: source.id,
+            bookUrl: detail.comicId,
+            tocUrl: detail.comicId,
+            title: detail.title,
+            author: detail.author,
+            coverUrl: detail.coverUrl,
+            intro: detail.intro,
+            kind: detail.kind,
+            chapters: detail.chapters
+        )
+        let relativePath = try library.save(manifest)
+
+        var updated = book
+        updated.type = .comic
+        updated.title = detail.title
+        updated.author = detail.author.isEmpty ? nil : detail.author
+        updated.filePath = relativePath
+        updated.sourceId = source.id
+        updated.sourceBookId = detail.comicId
+        updated.sourceUrl = detail.comicId
+        updated.chapterCount = detail.chapters.count
+        updated.newChapterCount = 0
+        return updated
+    }
+
+    public func refreshTocVenera(manifest: OnlineManifest,
+                                 source: VeneraSource,
+                                 runtime: VeneraRuntime) async throws -> (manifest: OnlineManifest, added: Int) {
+        let detail = try await runtime.detail(source: source, comicId: manifest.bookUrl)
+        guard !detail.chapters.isEmpty else { throw SourceError.emptyRule("目录是空的") }
+        var updated = manifest
+        updated.chapters = detail.chapters
+        updated.updatedAt = Int(Date().timeIntervalSince1970)
+        try library.save(updated)
+        return (updated, max(detail.chapters.count - manifest.chapters.count, 0))
     }
 
     // MARK: 正文

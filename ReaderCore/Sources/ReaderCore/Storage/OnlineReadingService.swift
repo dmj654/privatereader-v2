@@ -8,11 +8,16 @@ public final class OnlineReadingService: @unchecked Sendable {
     private let library: OnlineLibrary
     private let sources: SourceRepository
     private let client: SourceClient
+    private let venera: VeneraRuntime
 
-    public init(library: OnlineLibrary, sources: SourceRepository, client: SourceClient) {
+    public init(library: OnlineLibrary,
+                sources: SourceRepository,
+                client: SourceClient,
+                venera: VeneraRuntime = VeneraRuntime()) {
         self.library = library
         self.sources = sources
         self.client = client
+        self.venera = venera
     }
 
     // MARK: 清单
@@ -37,7 +42,7 @@ public final class OnlineReadingService: @unchecked Sendable {
     public func body(for book: Book, index: Int, forceRefresh: Bool = false) async throws -> String {
         let manifest = try manifest(for: book)
         guard manifest.chapters.indices.contains(index) else { throw SourceError.emptyContent }
-        guard let source = try resolveSource(manifest.sourceId) else {
+        guard let source = try resolveTarget(manifest.sourceId) else {
             throw SourceError.emptyRule("书源已被删除")
         }
 
@@ -47,13 +52,18 @@ public final class OnlineReadingService: @unchecked Sendable {
         }
 
         do {
-            let service = OnlineBookService(client: client, library: library)
-            return try await service.chapterBody(
-                manifest: manifest,
-                source: source,
-                index: index,
-                forceRefresh: forceRefresh
-            )
+            switch source {
+            case .legado(let legado):
+                let service = OnlineBookService(client: client, library: library, venera: venera)
+                return try await service.chapterBody(
+                    manifest: manifest,
+                    source: legado,
+                    index: index,
+                    forceRefresh: forceRefresh
+                )
+            case .venera:
+                throw VeneraEngineError.unsupported("漫画正文请在漫画阅读页加载图片。")
+            }
         } catch {
             if let cached = library.chapterText(bookId: manifest.bookId, index: index) {
                 return cached
@@ -69,8 +79,9 @@ public final class OnlineReadingService: @unchecked Sendable {
 
     public func prefetch(for book: Book, around index: Int) async {
         guard let manifest = try? manifest(for: book),
-              let source = try? resolveSource(manifest.sourceId) else { return }
-        let service = OnlineBookService(client: client, library: library)
+              let target = try? resolveTarget(manifest.sourceId),
+              let source = target.legadoSource else { return }
+        let service = OnlineBookService(client: client, library: library, venera: venera)
         await service.prefetch(manifest: manifest, source: source, around: index)
     }
 
@@ -79,12 +90,20 @@ public final class OnlineReadingService: @unchecked Sendable {
     /// 重新拉目录，返回新增章数。清单已落盘，调用方负责更新 Book.chapterCount。
     public func refreshToc(for book: Book) async throws -> Int {
         let manifest = try manifest(for: book)
-        guard let source = try resolveSource(manifest.sourceId) else {
+        guard let source = try resolveTarget(manifest.sourceId) else {
             throw SourceError.emptyRule("书源已被删除")
         }
-        let service = OnlineBookService(client: client, library: library)
-        let (_, added) = try await service.refreshToc(manifest: manifest, source: source)
-        return added
+        let service = OnlineBookService(client: client, library: library, venera: venera)
+        switch source {
+        case .legado(let legado):
+            let (_, added) = try await service.refreshToc(manifest: manifest, source: legado)
+            return added
+        case .venera(let script):
+            let (_, added) = try await service.refreshTocVenera(
+                manifest: manifest, source: script, runtime: venera
+            )
+            return added
+        }
     }
 
     // MARK: 缓存
@@ -106,10 +125,16 @@ public final class OnlineReadingService: @unchecked Sendable {
     public func downloadAll(for book: Book,
                             progress: (@Sendable (Int, Int) -> Void)? = nil) async throws -> Int {
         let manifest = try manifest(for: book)
-        guard let source = try resolveSource(manifest.sourceId) else {
+        guard let source = try resolveTarget(manifest.sourceId) else {
             throw SourceError.emptyRule("书源已被删除")
         }
-        let service = OnlineBookService(client: client, library: library)
+        if case .venera = source {
+            throw VeneraEngineError.unsupported("漫画请在阅读页里缓存章节。")
+        }
+        guard let legado = source.legadoSource else {
+            throw SourceError.emptyRule("书源已被删除")
+        }
+        let service = OnlineBookService(client: client, library: library, venera: venera)
         var downloaded = 0
 
         for index in manifest.chapters.indices {
@@ -118,7 +143,7 @@ public final class OnlineReadingService: @unchecked Sendable {
                 progress?(index + 1, manifest.chapters.count)
                 continue
             }
-            _ = try await service.chapterBody(manifest: manifest, source: source, index: index)
+            _ = try await service.chapterBody(manifest: manifest, source: legado, index: index)
             downloaded += 1
             progress?(index + 1, manifest.chapters.count)
         }
@@ -127,8 +152,8 @@ public final class OnlineReadingService: @unchecked Sendable {
 
     // MARK: 内部
 
-    private func resolveSource(_ id: String) throws -> LegadoSource? {
+    public func resolveTarget(_ id: String) throws -> SearchTarget? {
         guard let record = try sources.fetch(id: id) else { return nil }
-        return SourceImportService(repo: sources).executable(from: record)
+        return SourceImportService(repo: sources).target(from: record)
     }
 }

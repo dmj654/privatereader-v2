@@ -23,6 +23,7 @@ struct SourceImportSheet: View {
     @State private var errorMessage: String?
     @State private var showingFilePicker = false
     @State private var forceEnable = true
+    @State private var indexURL: URL?
 
     private var title: String { "导入\(category.title)" }
 
@@ -133,7 +134,7 @@ struct SourceImportSheet: View {
                     Text("从文件导入")
                         .font(Typo.headline)
                         .foregroundStyle(Palette.ink)
-                    Text("支持 legado 导出的 .json / .txt，只导入\(category.title)")
+                    Text("支持 legado 的 .json / .txt；漫画入口还支持 Venera 的 index.json（会自动下载并运行里面的 .js 源）")
                         .font(Typo.micro)
                         .foregroundStyle(Palette.ink3)
                 }
@@ -197,7 +198,9 @@ struct SourceImportSheet: View {
                     .foregroundStyle(Palette.accent)
             }
 
-            Text("只支持 legado 规则的 JSON。Venera 的 index.json 指向 JavaScript 漫画源，需要 JS 运行时，当前无法导入。")
+            Text(category == .comic
+                 ? "支持 legado 漫画源 JSON，以及 Venera 的 index.json / 单个 .js 源。Venera 源由 App 内置的 JavaScriptCore 运行。"
+                 : "支持 legado 小说源 JSON。漫画源（legado bookSourceType=2 或 Venera index.json）请到「漫画源」入口导入。")
                 .font(Typo.micro)
                 .foregroundStyle(Palette.ink3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -240,6 +243,12 @@ struct SourceImportSheet: View {
             Text("新增 \(summary.added) 条，覆盖 \(summary.updated) 条，共 \(summary.total) 条\(category.title)。")
                 .font(Typo.caption)
                 .foregroundStyle(Palette.ink2)
+            if let note = summary.note {
+                Text(note)
+                    .font(Typo.micro)
+                    .foregroundStyle(Palette.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if summary.total > 0 {
                 Text("回到列表可以「测一下全部」，把失效的源关掉。")
                     .font(Typo.micro)
@@ -266,6 +275,7 @@ struct SourceImportSheet: View {
                 data = json
             }
             env.importLog.append("已选择文件：\(url.lastPathComponent)，\(data.count) 字节")
+            indexURL = nil
             importData(data)
         } catch {
             errorMessage = "读取文件失败：\(error.localizedDescription)"
@@ -310,6 +320,7 @@ struct SourceImportSheet: View {
                 }
                 await MainActor.run {
                     isImporting = false
+                    indexURL = url
                     importData(data)
                 }
             } catch {
@@ -323,6 +334,13 @@ struct SourceImportSheet: View {
 
     /// 2500 条源、13MB JSON：解析和写库都放到后台，主线程只负责显示进度。
     private func importData(_ data: Data) {
+        // Venera 索引不是 legado JSON：每一项指向一份 JS 脚本，要逐个下载。
+        // 放在这里先分流，避免用户看到「格式不对」。
+        if VeneraIndexParser.isIndex(data) {
+            importVenera(data)
+            return
+        }
+
         isImporting = true
         summary = nil
         errorMessage = nil
@@ -352,6 +370,43 @@ struct SourceImportSheet: View {
                     isImporting = false
                     let message = readable(error)
                     env.importLog.append("\(category.title)导入失败：\(message)")
+                    errorMessage = message
+                }
+            }
+        }
+    }
+
+    private func importVenera(_ data: Data) {
+        isImporting = true
+        summary = nil
+        errorMessage = nil
+        let repo = env.sources
+        let force = forceEnable
+        let category = self.category
+        let base = indexURL
+        env.importLog.append("Venera 索引导入开始：\(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file))")
+
+        Task {
+            do {
+                let service = VeneraImportService(repo: repo)
+                let result = try await service.importIndex(
+                    data,
+                    indexURL: base,
+                    forceEnabled: force,
+                    category: category
+                )
+                await MainActor.run {
+                    isImporting = false
+                    summary = result
+                    text = ""
+                    env.importLog.append("Venera 导入完成：新增 \(result.added)，覆盖 \(result.updated)，失败 \(result.failed)")
+                    onImported(result)
+                }
+            } catch {
+                await MainActor.run {
+                    isImporting = false
+                    let message = readable(error)
+                    env.importLog.append("Venera 导入失败：\(message)")
                     errorMessage = message
                 }
             }

@@ -161,6 +161,9 @@ public struct BookSource: Codable, Equatable, Identifiable, Sendable {
     public var type: Int
     public var enabled: Bool
     public var rawJson: String
+    /// `legado` / `venera`。Venera 的 rawJson 是一份带 JS 源码的信封，
+    /// 不能交给 legado 解析器；两套引擎靠这个字段分流。
+    public var engine: String
     public var lastCheckAt: Int?
     public var lastCheckResult: String?
 
@@ -170,6 +173,7 @@ public struct BookSource: Codable, Equatable, Identifiable, Sendable {
         type: Int = 0,
         enabled: Bool = true,
         rawJson: String,
+        engine: String = "legado",
         lastCheckAt: Int? = nil,
         lastCheckResult: String? = nil
     ) {
@@ -178,6 +182,7 @@ public struct BookSource: Codable, Equatable, Identifiable, Sendable {
         self.type = type
         self.enabled = enabled
         self.rawJson = rawJson
+        self.engine = engine
         self.lastCheckAt = lastCheckAt
         self.lastCheckResult = lastCheckResult
     }

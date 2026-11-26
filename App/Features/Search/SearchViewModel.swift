@@ -59,7 +59,7 @@ final class SearchViewModel: ObservableObject {
     private var task: Task<Void, Never>?
     private var coordinator: SearchCoordinator?
     private var searchedKey = ""
-    private var failedSources: [LegadoSource] = []
+    private var failedSources: [SearchTarget] = []
     private static let historyKey = "search.history"
 
     /// 每个分类各自留一份结果。来回切「小说/漫画」不该重新搜、也不该白屏。
@@ -68,7 +68,7 @@ final class SearchViewModel: ObservableObject {
         var books: [MergedBook]
         var total: Int
         var finished: Int
-        var failed: [LegadoSource]
+        var failed: [SearchTarget]
         var failedCount: Int
         var sourceNames: [String: String]
     }
@@ -140,13 +140,13 @@ final class SearchViewModel: ObservableObject {
 
         task = Task { [weak self] in
             guard let self else { return }
-            let sources: [LegadoSource]
+            let sources: [SearchTarget]
             do {
                 // 两千多个源的 JSON 解析必须离开主线程：放在主线程会让
                 // 「切分类 / 点搜索」先卡一两秒，看起来就是点了没反应。
                 let repo = env.sources
                 sources = try await Task.detached(priority: .userInitiated) {
-                    try SourceImportService(repo: repo).enabledSources()
+                    try SourceImportService(repo: repo).enabledTargets()
                 }.value.filter { $0.isComic == wantedComic }
             } catch {
                 self.isSearching = false
@@ -165,7 +165,8 @@ final class SearchViewModel: ObservableObject {
             self.totalSources = sources.count
             self.finishedSources = 0
 
-            let coordinator = SearchCoordinator(client: env.sourceClient)
+            let coordinator = SearchCoordinator(client: env.sourceClient,
+                                               venera: env.veneraRuntime)
             self.coordinator = coordinator
 
             for await result in await coordinator.search(sources: sources, key: key) {
@@ -174,6 +175,9 @@ final class SearchViewModel: ObservableObject {
             }
 
             self.isSearching = false
+            if self.failedCount == 0 && self.books.isEmpty && self.finishedSources > 0 {
+                self.errorMessage = "已执行 \(self.finishedSources) 个源，但规则都解析出 0 条。请到「发现 → 书源」对这几个源点「测一下」，看具体返回。"
+            }
             self.saveCache()
         }
     }
@@ -216,7 +220,8 @@ final class SearchViewModel: ObservableObject {
         failedCount = 0
         isSearching = true
 
-        let coordinator = coordinator ?? SearchCoordinator(client: env.sourceClient)
+        let coordinator = coordinator ?? SearchCoordinator(client: env.sourceClient,
+                                                          venera: env.veneraRuntime)
         self.coordinator = coordinator
 
         Task { [weak self] in

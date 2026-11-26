@@ -430,7 +430,7 @@ final class MergedDetailModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var shelfBook: Book?
 
-    private var source: LegadoSource?
+    private var source: SearchTarget?
 
     init(book: SearchViewModel.MergedBook) {
         self.book = book
@@ -467,24 +467,44 @@ final class MergedDetailModel: ObservableObject {
         chapters = []
 
         let ordered = orderedEntries(preferred: preferred)
-        var candidates: [(OnlineBook, LegadoSource, [OnlineChapter])] = []
+        var candidates: [(OnlineBook, SearchTarget, [OnlineChapter])] = []
         var tried = 0
 
         // 先把候选源的目录都取回来，按章节数从多到少排；再逐个验证首章可读。
         // 先碰上一个「章节少但能读」的源就停，会错过更完整的版本。
         for entry in ordered.prefix(4) {
-            guard let source = resolve(entry.sourceId, env: env) else { continue }
+            guard let target = resolve(entry.sourceId, env: env) else { continue }
             tried += 1
-            if let toc = try? await env.sourceClient.chapters(source: source, book: entry),
-               !toc.isEmpty {
-                candidates.append((entry, source, toc))
+            switch target {
+            case .legado(let legado):
+                if let toc = try? await env.sourceClient.chapters(source: legado, book: entry),
+                   !toc.isEmpty {
+                    candidates.append((entry, target, toc))
+                }
+            case .venera(let script):
+                if let detail = try? await env.veneraRuntime.detail(
+                    source: script, comicId: entry.bookUrl
+                ), !detail.chapters.isEmpty {
+                    let enriched = OnlineBook(
+                        sourceId: script.id,
+                        name: detail.title,
+                        author: detail.author,
+                        coverUrl: detail.coverUrl,
+                        intro: detail.intro,
+                        kind: detail.kind,
+                        lastChapter: detail.lastChapter,
+                        bookUrl: detail.comicId
+                    )
+                    candidates.append((enriched, target, detail.chapters))
+                }
             }
         }
 
         candidates.sort { $0.2.count > $1.2.count }
 
         for candidate in candidates {
-            if await canRead(source: candidate.1, chapter: candidate.2[0], env: env) {
+            if await canRead(source: candidate.1, entry: candidate.0,
+                             chapter: candidate.2[0], env: env) {
                 apply(candidate.0, source: candidate.1, chapters: candidate.2)
                 saveToCache()
                 isLoading = false
@@ -529,9 +549,18 @@ final class MergedDetailModel: ObservableObject {
         do {
             let service = OnlineBookService(
                 client: env.sourceClient,
-                library: OnlineLibrary(paths: env.paths)
+                library: OnlineLibrary(paths: env.paths),
+                venera: env.veneraRuntime
             )
-            let bundle = try await service.prepare(chosen, source: source)
+            let bundle: OnlineBookBundle
+            switch source {
+            case .legado(let legado):
+                bundle = try await service.prepare(chosen, source: legado)
+            case .venera(let script):
+                bundle = try await service.prepareVenera(
+                    chosen, source: script, runtime: env.veneraRuntime
+                )
+            }
             try env.books.insert(bundle.book)
             shelfBook = bundle.book
             return bundle.book
@@ -542,15 +571,26 @@ final class MergedDetailModel: ObservableObject {
     }
 
     /// 取第一章确认正文 / 图片真的能拿到。只看目录，很多死源也能骗过。
-    private func canRead(source: LegadoSource,
+    private func canRead(source: SearchTarget,
+                         entry: OnlineBook,
                          chapter: OnlineChapter,
                          env: AppEnvironment) async -> Bool {
-        if source.isComic {
-            let pages = try? await env.sourceClient.comicPages(source: source, chapter: chapter)
+        switch source {
+        case .legado(let legado):
+            if legado.isComic {
+                let pages = try? await env.sourceClient.comicPages(source: legado, chapter: chapter)
+                return !(pages?.isEmpty ?? true)
+            }
+            let text = try? await env.sourceClient.content(source: legado, chapter: chapter)
+            return !(text?.isEmpty ?? true)
+        case .venera(let script):
+            let pages = try? await env.veneraRuntime.pages(
+                source: script,
+                comicId: entry.bookUrl,
+                epId: chapter.url
+            )
             return !(pages?.isEmpty ?? true)
         }
-        let text = try? await env.sourceClient.content(source: source, chapter: chapter)
-        return !(text?.isEmpty ?? true)
     }
 
     private func saveToCache() {
@@ -572,7 +612,7 @@ final class MergedDetailModel: ObservableObject {
         )
     }
 
-    private func apply(_ entry: OnlineBook, source: LegadoSource, chapters: [OnlineChapter]) {
+    private func apply(_ entry: OnlineBook, source: SearchTarget, chapters: [OnlineChapter]) {
         chosen = entry
         self.source = source
         sourceName = source.name
@@ -610,9 +650,9 @@ final class MergedDetailModel: ObservableObject {
         return value
     }
 
-    private func resolve(_ id: String, env: AppEnvironment) -> LegadoSource? {
+    private func resolve(_ id: String, env: AppEnvironment) -> SearchTarget? {
         guard let record = try? env.sources.fetch(id: id) else { return nil }
-        return SourceImportService(repo: env.sources).executable(from: record)
+        return SourceImportService(repo: env.sources).target(from: record)
     }
 
     private func findExisting(_ entry: OnlineBook, env: AppEnvironment) -> Book? {

@@ -19,7 +19,7 @@ public struct SourceImportService {
     public func importJSON(_ data: Data,
                            forceEnabled: Bool? = nil,
                            category: SourceImportCategory? = nil) throws -> SourceImportSummary {
-        if Self.isVeneraIndex(data) {
+        if VeneraIndexParser.isIndex(data) {
             throw SourceImportError.veneraJavaScriptIndex
         }
 
@@ -70,12 +70,17 @@ public struct SourceImportService {
 public struct SourceImportSummary: Equatable, Sendable {
     public let added: Int
     public let updated: Int
+    /// Venera 索引里下载失败的条目数；legado 导入恒为 0。
+    public let failed: Int
+    public let note: String?
 
     public var total: Int { added + updated }
 
-    public init(added: Int, updated: Int) {
+    public init(added: Int, updated: Int, failed: Int = 0, note: String? = nil) {
         self.added = added
         self.updated = updated
+        self.failed = failed
+        self.note = note
     }
 }
 
@@ -97,44 +102,52 @@ public enum SourceImportCategory: String, Equatable, Sendable {
 public enum SourceImportError: LocalizedError, Equatable {
     /// 文件里没有一条属于当前入口的源。
     case noMatchingSource(SourceImportCategory)
-    /// Venera 的 index.json 是 JavaScript 源清单，不是 legado 规则源。
+    /// 旧同步接口遇到 Venera 索引时的提示；新 UI 会走异步导入。
     case veneraJavaScriptIndex
+    case veneraIndexInvalid
+    case veneraImportFailed(String)
+    case veneraScriptInvalid(String)
 
     public var errorDescription: String? {
         switch self {
         case .noMatchingSource(let category):
             if category == .comic {
-                return "这份文件里没有漫画源。当前是「导入漫画源」，只接收 legado 的 bookSourceType = 2；小说源请到「小说源」入口导入。"
+                return "这份文件里没有漫画源。当前是「导入漫画源」，只接收 legado 的 bookSourceType = 2，或 Venera 的 index.json；小说源请到「小说源」入口导入。"
             }
             return "这份文件里没有小说源。当前是「导入小说源」，漫画源请到「漫画源」入口导入。"
         case .veneraJavaScriptIndex:
-            return "这是 Venera 的 JavaScript 源索引（index.json），不是 legado 书源。PrivateReader 目前只支持 legado 规则的 JSON；Venera 源需要 JavaScript 运行时，不能直接导入。"
+            return "这是 Venera 的 JavaScript 源索引。请确认当前是「导入漫画源」入口，App 会下载索引里的 JS 源并运行。"
+        case .veneraIndexInvalid:
+            return "这不是有效的 Venera 源索引：每一项需要 name，以及指向 .js 的 fileName 或 url。"
+        case .veneraImportFailed(let message):
+            return "Venera 源导入失败：\(message)"
+        case .veneraScriptInvalid(let name):
+            return "「\(name)」不是有效的 Venera 漫画源：脚本里找不到 extends ComicSource 的类。"
         }
     }
 }
 
-private extension SourceImportService {
-    /// 只认结构特征，不靠域名或文件名：Venera 索引的每一项都有
-    /// `fileName`（指向 .js）和 `key`，但没有 `bookSourceName`。
-    static func isVeneraIndex(_ data: Data) -> Bool {
-        guard let root = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else {
-            return false
+public extension SourceImportService {
+    /// 同时取出 legado 与 Venera 的可执行源。搜索页、换源页、体检都用它。
+    func enabledTargets() throws -> [SearchTarget] {
+        try repo.enabled().compactMap { record in
+            if let venera = VeneraSource.decode(record) {
+                return .venera(venera)
+            }
+            if let legado = executable(from: record) {
+                return .legado(legado)
+            }
+            return nil
         }
-        let items: [[String: Any]]
-        if let array = root as? [[String: Any]] {
-            items = array
-        } else if let object = root as? [String: Any],
-                  let array = object["sources"] as? [[String: Any]] {
-            items = array
-        } else {
-            return false
+    }
+
+    func target(from record: BookSource) -> SearchTarget? {
+        if let venera = VeneraSource.decode(record) {
+            return .venera(venera)
         }
-        guard !items.isEmpty else { return false }
-        let looksLikeVenera = items.allSatisfy {
-            ($0["fileName"] as? String)?.hasSuffix(".js") == true
-                && $0["bookSourceName"] == nil
-                && $0["bookSourceUrl"] == nil
+        if let legado = executable(from: record) {
+            return .legado(legado)
         }
-        return looksLikeVenera
+        return nil
     }
 }

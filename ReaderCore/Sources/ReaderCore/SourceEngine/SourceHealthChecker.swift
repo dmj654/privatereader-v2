@@ -31,9 +31,11 @@ public enum SourceHealthStatus: Equatable, Sendable {
 /// 每个都等 20 秒就没法用了。这里用任务组赛跑，到点直接取消。
 public struct SourceHealthChecker: Sendable {
     private let client: SourceClient
+    private let venera: VeneraRuntime
 
-    public init(client: SourceClient) {
+    public init(client: SourceClient, venera: VeneraRuntime = VeneraRuntime()) {
         self.client = client
+        self.venera = venera
     }
 
     public func check(_ source: LegadoSource,
@@ -51,6 +53,43 @@ public struct SourceHealthChecker: Sendable {
                     return .success(try await client.search(source: source, key: keyword))
                 } catch {
                     return .failure(error.localizedDescription)
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0.05) * 1_000_000_000))
+                return .timeout
+            }
+            let first = await group.next() ?? .timeout
+            group.cancelAll()
+            return first
+        }
+
+        switch race {
+        case .success(let books):
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            return .ok(milliseconds: ms, sampleCount: books.count)
+        case .failure(let message):
+            return .failed(message)
+        case .timeout:
+            return .timeout
+        }
+    }
+
+    public func check(_ source: VeneraSource,
+                      keyword: String = "海贼",
+                      timeout: TimeInterval = 12) async -> SourceHealthStatus {
+        guard source.enabled else { return .skipped("已关闭") }
+
+        let started = Date()
+        let race = await withTaskGroup(of: Race.self) { group in
+            group.addTask {
+                do {
+                    return .success(try await venera.search(source: source,
+                                                            keyword: keyword,
+                                                            timeout: max(timeout, 30)))
+                } catch {
+                    return .failure((error as? LocalizedError)?.errorDescription
+                                    ?? error.localizedDescription)
                 }
             }
             group.addTask {

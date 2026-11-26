@@ -19,7 +19,8 @@ let package = Package(
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "SwiftSoup", package: "SwiftSoup"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation")
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .testTarget(name: "ReaderCoreTests", dependencies: ["ReaderCore"])
     ]

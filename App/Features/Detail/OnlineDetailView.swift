@@ -169,7 +169,7 @@ struct OnlineDetailView: View {
                 .disabled(chapters.isEmpty)
             }
 
-            if let shelfBook {
+            if let shelfBook, !isComic {
                 HStack(spacing: 9) {
                     Button {
                         cacheAll(shelfBook)
@@ -261,7 +261,8 @@ struct OnlineDetailView: View {
             chapters = (try? OnlineReadingService(
                 library: OnlineLibrary(paths: env.paths),
                 sources: env.sources,
-                client: env.sourceClient
+                client: env.sourceClient,
+                venera: env.veneraRuntime
             ).manifest(for: existing).chapters) ?? []
             refreshCacheUsage()
             isLoading = false
@@ -276,13 +277,33 @@ struct OnlineDetailView: View {
 
         do {
             var info = online
-            if let enriched = try? await env.sourceClient.bookInfo(source: source, book: online) {
-                info = enriched
+            switch source {
+            case .legado(let legado):
+                if let enriched = try? await env.sourceClient.bookInfo(source: legado, book: online) {
+                    info = enriched
+                }
+                let toc = try await env.sourceClient.chapters(source: legado, book: info)
+                detail = info
+                chapters = toc
+                errorMessage = toc.isEmpty ? "这个源没有返回目录。" : nil
+            case .venera(let script):
+                let info = try await env.veneraRuntime.detail(
+                    source: script,
+                    comicId: online.bookUrl
+                )
+                detail = OnlineBook(
+                    sourceId: script.id,
+                    name: info.title,
+                    author: info.author,
+                    coverUrl: info.coverUrl,
+                    intro: info.intro,
+                    kind: info.kind,
+                    lastChapter: info.lastChapter,
+                    bookUrl: info.comicId
+                )
+                chapters = info.chapters
+                errorMessage = chapters.isEmpty ? "这个源没有返回目录。" : nil
             }
-            let toc = try await env.sourceClient.chapters(source: source, book: info)
-            detail = info
-            chapters = toc
-            errorMessage = toc.isEmpty ? "这个源没有返回目录。" : nil
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -298,9 +319,9 @@ struct OnlineDetailView: View {
         }
     }
 
-    private func resolveSource() -> LegadoSource? {
+    private func resolveSource() -> SearchTarget? {
         guard let record = try? env.sources.fetch(id: online.sourceId) else { return nil }
-        return SourceImportService(repo: env.sources).executable(from: record)
+        return SourceImportService(repo: env.sources).target(from: record)
     }
 
     private func addToShelf() {
@@ -313,11 +334,20 @@ struct OnlineDetailView: View {
             do {
                 let service = OnlineBookService(
                     client: env.sourceClient,
-                    library: OnlineLibrary(paths: env.paths)
+                    library: OnlineLibrary(paths: env.paths),
+                    venera: env.veneraRuntime
                 )
                 var target = detail
                 if target.bookUrl.isEmpty { target.bookUrl = online.bookUrl }
-                let bundle = try await service.prepare(target, source: source)
+                let bundle: OnlineBookBundle
+                switch source {
+                case .legado(let legado):
+                    bundle = try await service.prepare(target, source: legado)
+                case .venera(let script):
+                    bundle = try await service.prepareVenera(
+                        target, source: script, runtime: env.veneraRuntime
+                    )
+                }
                 try env.books.insert(bundle.book)
                 await MainActor.run {
                     shelfBook = bundle.book
