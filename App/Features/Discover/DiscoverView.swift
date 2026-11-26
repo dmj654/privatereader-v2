@@ -264,7 +264,7 @@ struct DiscoverView: View {
             novelCount = all.filter { $0.type != 2 }.count
             comicCount = all.filter { $0.type == 2 }.count
             let invalid = (try? env.sources.invalidSources()) ?? []
-            invalidCount = invalid.filter { $0.isComic == wantsComic }.count
+            invalidCount = invalid.filter { ($0.type == 2) == wantsComic }.count
             loadError = nil
         } catch {
             loadError = error.localizedDescription
@@ -283,16 +283,16 @@ struct DiscoverView: View {
             return
         }
 
-        let enabled = ((try? SourceImportService(repo: env.sources).enabledSources()) ?? [])
-            .filter { $0.isComic == wantsComic }
-        guard !enabled.isEmpty else {
+        let enabled = (try? SourceImportService(repo: env.sources).enabledSources()) ?? []
+        let wanted = enabled.filter { ($0.type == 2) == wantsComic }
+        guard !wanted.isEmpty else {
             maintenanceMessage = "当前分类没有启用的\(kindTitle)。"
             return
         }
 
         isChecking = true
         checkedCount = 0
-        checkTotal = enabled.count
+        checkTotal = wanted.count
         maintenanceMessage = nil
 
         let repo = env.sources
@@ -300,8 +300,8 @@ struct DiscoverView: View {
 
         checkTask = Task {
             await withTaskGroup(of: (String, SourceHealthStatus).self) { group in
-                var iterator = enabled.makeIterator()
-                let width = min(8, enabled.count)
+                var iterator = wanted.makeIterator()
+                let width = min(8, wanted.count)
                 for _ in 0..<width {
                     guard let source = iterator.next() else { break }
                     group.addTask { (source.id, await checker.check(source)) }
@@ -338,7 +338,8 @@ struct DiscoverView: View {
     }
 
     private func deleteInvalid() {
-        let invalid = ((try? env.sources.invalidSources()) ?? []).filter { $0.isComic == wantsComic }
+        let all = (try? env.sources.invalidSources()) ?? []
+        let invalid = all.filter { ($0.type == 2) == wantsComic }
         guard !invalid.isEmpty else {
             maintenanceMessage = "没有可删除的失效源。"
             return

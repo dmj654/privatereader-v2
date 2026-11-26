@@ -37,6 +37,7 @@ private enum ReaderMode: Equatable {
 
 struct NovelReaderView: View {
     @StateObject private var model: NovelReaderViewModel
+    @State private var book: Book
     @StateObject private var prefs = ReaderPreferences()
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
