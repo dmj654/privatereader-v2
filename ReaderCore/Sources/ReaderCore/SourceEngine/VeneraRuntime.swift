@@ -103,7 +103,18 @@ public final class VeneraRuntime: @unchecked Sendable {
                     }
                     return out;
                 };
-                d.chapters = flatten(d.chapters);
+                const rawChapters = d.chapters;
+                d.chapters = flatten(rawChapters);
+                if (d.chapters.length === 0) {
+                    d.__chaptersDebug = {
+                        rawType: Object.prototype.toString.call(rawChapters),
+                        rawIsMap: rawChapters instanceof Map,
+                        rawSize: rawChapters && rawChapters.size,
+                        rawKeys: rawChapters && typeof rawChapters === 'object'
+                            ? Object.keys(rawChapters).slice(0, 5)
+                            : []
+                    };
+                }
             }
             return JSON.stringify(d);
         })()
@@ -127,7 +138,7 @@ public final class VeneraRuntime: @unchecked Sendable {
         }.joined(separator: " / ")
 
         var chapters: [OnlineChapter] = []
-        if let pairs = object["chapters"] as? [[Any]], pairs.count >= 2 {
+        if let pairs = object["chapters"] as? [[Any]], !pairs.isEmpty {
             for pair in pairs {
                 let id = string(pair[0])
                 let name = string(pair[1])
@@ -139,6 +150,10 @@ public final class VeneraRuntime: @unchecked Sendable {
             // 没有顺序信息时按标题里的数字尽量排一下。
             chapters = dict.map { OnlineChapter(name: string($0.value), url: $0.key) }
                 .sorted { naturalLess($0.name, $1.name) }
+        }
+        if chapters.isEmpty {
+            let debug = object["__chaptersDebug"] as? [String: Any] ?? [:]
+            throw VeneraEngineError.emptyResult("章节为空（\(debug)）")
         }
 
         let subId = string(object["subId"])
