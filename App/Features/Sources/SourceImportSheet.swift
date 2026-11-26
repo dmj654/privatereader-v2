@@ -250,7 +250,7 @@ struct SourceImportSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if summary.total > 0 {
-                Text("回到列表可以「测一下全部」，把失效的源关掉。")
+                Text("回到列表可以「测一下全部」；明确失败的源可以关掉，超时的源会保留。")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.ink3)
             }

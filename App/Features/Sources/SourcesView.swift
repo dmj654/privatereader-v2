@@ -122,10 +122,10 @@ struct SourcesView: View {
         } message: {
             Text("只删当前这一类的 \(kindSources.count) 条源，书架里的书不受影响。")
         }
-        .confirmationDialog("删除 \(failedSources.count) 条失败的\(kindFilter.title)？", isPresented: $confirmDeleteFailed, titleVisibility: .visible) {
+        .confirmationDialog("删除 \(failedSources.count) 条明确失败的\(kindFilter.title)？", isPresented: $confirmDeleteFailed, titleVisibility: .visible) {
             Button("删除失败源", role: .destructive) { deleteFailed() }
         } message: {
-            Text("只删当前这一类里体检失败或超时的源，正常的源不动。")
+            Text("只删当前这一类里明确失败的源（404、解析错误、脚本报错）。超时的源会保留，可以稍后再测。")
         }
         .onAppear(perform: reload)
     }
@@ -423,7 +423,7 @@ struct SourcesView: View {
         case .ok(let ms, let count):
             return "正常 · \(ms)ms · \(count) 条结果"
         case .timeout:
-            return "超时 · 源站没在 5 秒内响应"
+            return "超时 · 首轮和加长重试都没响应（不是失效，可稍后再测）"
         case .failed(let message):
             return "失败 · \(message)"
         case .skipped(let reason):
@@ -499,13 +499,13 @@ struct SourcesView: View {
         Task {
             let service = SourceImportService(repo: env.sources)
             let target = service.target(from: source)
+            let checker = SourceHealthChecker(client: env.sourceClient, venera: env.veneraRuntime)
             let status: SourceHealthStatus
             switch target {
             case .legado(let executable):
-                status = await SourceHealthChecker(client: env.sourceClient).check(executable)
+                status = await checker.check(executable, retryTimeout: 20)
             case .venera(let script):
-                status = await SourceHealthChecker(client: env.sourceClient,
-                                                   venera: env.veneraRuntime).check(script)
+                status = await checker.check(script, retryTimeout: 45)
             case nil:
                 status = .failed("书源解析失败，建议重新导入")
             }
@@ -536,12 +536,13 @@ struct SourcesView: View {
 
         let byID = Dictionary(uniqueKeysWithValues: targets.map { ($0.id, $0) })
         let service = SourceImportService(repo: env.sources)
-        let checker = SourceHealthChecker(client: env.sourceClient)
+        let checker = SourceHealthChecker(client: env.sourceClient, venera: env.veneraRuntime)
 
         checkTask = Task {
             await withTaskGroup(of: (String, SourceHealthStatus?).self) { group in
                 var iterator = targets.makeIterator()
-                let width = min(8, targets.count)
+                // Venera 的 JS 运行时很重，漫画源同时开 8 个会互相拖到超时；降到 4 路。
+                let width = min(kindFilter == .comic ? 4 : 8, targets.count)
 
                 for _ in 0..<width {
                     guard let source = iterator.next() else { break }
@@ -551,9 +552,9 @@ struct SourcesView: View {
                         }
                         switch target {
                         case .legado(let executable):
-                            return (source.id, await checker.check(executable))
+                            return (source.id, await checker.check(executable, retryTimeout: 20))
                         case .venera(let script):
-                            return (source.id, await checker.check(script))
+                            return (source.id, await checker.check(script, retryTimeout: 45))
                         }
                     }
                 }
@@ -578,9 +579,9 @@ struct SourcesView: View {
                             }
                             switch target {
                             case .legado(let executable):
-                                return (source.id, await checker.check(executable))
+                                return (source.id, await checker.check(executable, retryTimeout: 20))
                             case .venera(let script):
-                                return (source.id, await checker.check(script))
+                                return (source.id, await checker.check(script, retryTimeout: 45))
                             }
                         }
                     }
@@ -593,27 +594,29 @@ struct SourcesView: View {
                 // 取消时不要弹汇总
                 guard checkedCount >= targets.count else { return }
 
-                var ok = 0, bad = 0
+                var ok = 0, failed = 0, timedOut = 0
                 for source in targets {
                     switch health[source.id] {
                     case .ok: ok += 1
-                    case .none: break
-                    case .some: bad += 1
+                    case .failed: failed += 1
+                    case .timeout: timedOut += 1
+                    case .skipped, .none: break
                     }
                 }
-                if bad > 0 || ok == 0 {
-                    errorMessage = "检测完成：\(ok) 条正常，\(bad) 条有问题。可以点右上角菜单一键关闭或删除失败源。"
+                if failed > 0 {
+                    errorMessage = "检测完成：\(ok) 条正常，\(failed) 条明确失败，\(timedOut) 条超时（已保留，可稍后再测）。可以点右上角菜单关闭或删除明确失败的源。"
+                } else if timedOut > 0 {
+                    errorMessage = "检测完成：没有明确失败；\(ok) 条正常，\(timedOut) 条超时（已自动重试仍无响应，保留着，不会删除）。"
                 }
             }
         }
     }
 
-    /// 体检失败 / 超时、且仍然启用的源。
+    /// 明确失败、且仍然启用的源。超时不算失败，不能一键删除。
     private var failedSources: [BookSource] {
         kindSources.filter { source in
             guard source.enabled, let status = health[source.id] else { return false }
-            if case .skipped = status { return false }
-            return !status.isHealthy
+            return status.isDefiniteFailure
         }
     }
 

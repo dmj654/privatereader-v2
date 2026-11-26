@@ -68,6 +68,30 @@ final class SourceHealthCheckerTests: XCTestCase {
                           "体检必须按自己的超时返回，不能等 URLSession 的 20 秒")
     }
 
+    func testTimeoutIsRetriedWithLongerBudget() async {
+        let checker = SourceHealthChecker(client: makeClient(SlowURLProtocol.self))
+        let started = Date()
+
+        // 第一轮 0.2 秒必超时，站点 1 秒才返回；第二轮给 2 秒，应当判正常。
+        let status = await checker.check(makeSource(), timeout: 0.2, retryTimeout: 2)
+
+        guard case .ok = status else {
+            return XCTFail("超时后加长重试应当通过，实际 \(status)")
+        }
+        XCTAssertGreaterThan(Date().timeIntervalSince(started), 0.9,
+                             "应当等完第二轮 1 秒的慢响应，而不是复用第一轮的超时结果")
+        XCTAssertTrue(status.isHealthy)
+    }
+
+    func testTimeoutAfterRetryStaysTimeoutAndIsNotFailure() async {
+        let checker = SourceHealthChecker(client: makeClient(SlowURLProtocol.self))
+
+        let status = await checker.check(makeSource(), timeout: 0.2, retryTimeout: 0.2)
+
+        XCTAssertEqual(status, .timeout)
+        XCTAssertFalse(status.isDefiniteFailure, "两次都超时也只能算没测出来，不能算失效")
+    }
+
     func testHTTPErrorIsReportedAsFailure() async {
         // 没有登记路由 → 桩返回 404
         StaticURLProtocol.routes = [:]
@@ -107,7 +131,7 @@ final class SourceHealthCheckerTests: XCTestCase {
 
     func testLabelIsShortEnoughForList() {
         XCTAssertEqual(SourceHealthStatus.ok(milliseconds: 128, sampleCount: 3).label, "128ms · 3 条")
-        XCTAssertEqual(SourceHealthStatus.timeout.label, "超时")
+        XCTAssertEqual(SourceHealthStatus.timeout.label, "超时（可重试）")
         XCTAssertEqual(SourceHealthStatus.failed("x").label, "失败")
         XCTAssertEqual(SourceHealthStatus.skipped("已关闭").label, "已关闭")
     }

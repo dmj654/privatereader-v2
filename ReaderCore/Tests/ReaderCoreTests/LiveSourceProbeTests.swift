@@ -129,6 +129,13 @@ final class LiveSourceProbeTests: XCTestCase {
         XCTAssertFalse(books.isEmpty, "CopyManga 搜索返回 0 条")
         print("[LIVE] CopyManga 搜索：\(books.count) 本，第一本 \(books.first?.name ?? "-")")
 
+        // 体检逻辑要和真实搜索同一量级：首轮 12 秒可能超时，但加长重试必须能通过。
+        let checker = SourceHealthChecker(client: SourceClient(), venera: runtime)
+        let quick = await checker.check(source, timeout: 12)
+        let retried = await checker.check(source, timeout: 12, retryTimeout: 45)
+        print("[LIVE][HEALTH] 首轮 \(quick.label)；12s+45s 重试 \(retried.label)")
+        XCTAssertTrue(retried.isHealthy, "体检加长重试仍把可搜索的 CopyManga 判失败：\(retried.label)")
+
         let comic = try XCTUnwrap(books.first)
         let detail = try await runtime.detail(source: source, comicId: comic.bookUrl, timeout: 50)
         XCTAssertFalse(detail.chapters.isEmpty, "CopyManga 目录为空")

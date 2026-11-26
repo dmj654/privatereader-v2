@@ -21,168 +21,159 @@ struct TypographySheet: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 14) {
+                header
+
                 if focus == .typography {
-                    fontSection
-                    sizeSection
-                    lineSpacingSection
-                    letterSpacingSection
-                    paragraphSection
-                    marginSection
-                    alignSection
-                    indentSection
+                    typographyCard
                 }
 
-                backgroundSection
+                backgroundCard
 
                 if focus == .typography {
-                    animationSection
+                    animationCard
                     zoneSection
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
-            .padding(.bottom, 30)
+            .padding(.top, 4)
+            .padding(.bottom, 32)
         }
         .background(Palette.surface)
     }
 
-    // MARK: 字体
+    // MARK: 顶部
 
-    private var fontSection: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            sectionTitle("字体")
-            HStack(spacing: 8) {
-                ForEach(ReaderFontFamily.allCases, id: \.self) { family in
-                    optionChip(family.title, selected: style.fontFamily == family) {
-                        update { $0.fontFamily = family }
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(focus == .theme ? "阅读背景" : "排版设置")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+            Text(focus == .theme ? "选择正文的背景色" : "字体、间距、页边距与翻页方式")
+                .font(.system(size: 11.5))
+                .foregroundStyle(Palette.ink3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: 字体与间距
+
+    private var typographyCard: some View {
+        settingsCard {
+            settingRow("字体") {
+                HStack(spacing: 8) {
+                    ForEach(ReaderFontFamily.allCases, id: \.self) { family in
+                        optionChip(family.title, selected: style.fontFamily == family, expands: true) {
+                            update { $0.fontFamily = family }
+                        }
                     }
                 }
             }
-        }
-        .padding(.vertical, 10)
-    }
 
-    // MARK: 字号
+            rowDivider
 
-    private var sizeSection: some View {
-        row("字号", value: "\(Int(style.fontSize))") {
-            HStack(spacing: 8) {
-                smallButton("A−") { update { $0.fontSize = max(12, $0.fontSize - 1) } }
-                smallButton("A+") { update { $0.fontSize = min(30, $0.fontSize + 1) } }
-            }
-        }
-    }
-
-    // MARK: 行距
-
-    private var lineSpacingSection: some View {
-        row("行距", value: String(format: "%.2f", style.lineHeightMultiple)) {
-            HStack(spacing: 8) {
-                smallButton("紧") { update { $0.lineHeightMultiple = max(1.2, $0.lineHeightMultiple - 0.1) } }
-                smallButton("中") { update { $0.lineHeightMultiple = 1.95 } }
-                smallButton("松") { update { $0.lineHeightMultiple = min(3.0, $0.lineHeightMultiple + 0.1) } }
-            }
-        }
-    }
-
-    // MARK: 字间距
-
-    private var letterSpacingSection: some View {
-        row("字间距", value: String(format: "%.1f", style.letterSpacing)) {
-            HStack(spacing: 8) {
-                smallButton("−") { update { $0.letterSpacing = max(-1, $0.letterSpacing - 0.5) } }
-                smallButton("＋") { update { $0.letterSpacing = min(3, $0.letterSpacing + 0.5) } }
-            }
-        }
-    }
-
-    // MARK: 段间距
-
-    private var paragraphSection: some View {
-        row("段间距", value: "\(Int(style.paragraphSpacing))") {
-            HStack(spacing: 8) {
-                smallButton("−") { update { $0.paragraphSpacing = max(0, $0.paragraphSpacing - 4) } }
-                smallButton("＋") { update { $0.paragraphSpacing = min(32, $0.paragraphSpacing + 4) } }
-            }
-        }
-    }
-
-    // MARK: 页边距
-
-    private var marginSection: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            sectionTitle("页边距")
-            HStack(spacing: 8) {
-                optionChip("窄", selected: style.marginHorizontal < 20) {
-                    update { $0.marginHorizontal = 16 }
-                }
-                optionChip("中", selected: style.marginHorizontal >= 20 && style.marginHorizontal < 26) {
-                    update { $0.marginHorizontal = 22 }
-                }
-                optionChip("宽", selected: style.marginHorizontal >= 26) {
-                    update { $0.marginHorizontal = 30 }
+            settingRow("字号", value: "\(Int(style.fontSize))") {
+                HStack(spacing: 8) {
+                    smallButton("A−") { update { $0.fontSize = max(12, $0.fontSize - 1) } }
+                    smallButton("A+") { update { $0.fontSize = min(30, $0.fontSize + 1) } }
                 }
             }
-        }
-        .padding(.vertical, 10)
-    }
 
-    // MARK: 对齐
+            rowDivider
 
-    private var alignSection: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            sectionTitle("对齐")
-            HStack(spacing: 8) {
-                optionChip("左对齐", selected: !style.justified) {
-                    update { $0.justified = false }
-                }
-                optionChip("两端对齐", selected: style.justified) {
-                    update { $0.justified = true }
+            settingRow("行距", value: String(format: "%.2f", style.lineHeightMultiple)) {
+                HStack(spacing: 8) {
+                    smallButton("紧") { update { $0.lineHeightMultiple = max(1.2, $0.lineHeightMultiple - 0.1) } }
+                    smallButton("中") { update { $0.lineHeightMultiple = 1.95 } }
+                    smallButton("松") { update { $0.lineHeightMultiple = min(3.0, $0.lineHeightMultiple + 0.1) } }
                 }
             }
-        }
-        .padding(.vertical, 10)
-    }
 
-    // MARK: 首行缩进
+            rowDivider
 
-    private var indentSection: some View {
-        HStack {
-            Text("首行缩进两字")
-                .font(.system(size: 13.5))
-                .foregroundStyle(Palette.ink2)
-            Spacer()
-            Toggle("", isOn: Binding(
-                get: { style.indentFirstLine },
-                set: { value in update { $0.indentFirstLine = value } }
-            ))
-            .labelsHidden()
-            .tint(Palette.accent)
+            settingRow("字间距", value: String(format: "%.1f", style.letterSpacing)) {
+                HStack(spacing: 8) {
+                    smallButton("−") { update { $0.letterSpacing = max(-1, $0.letterSpacing - 0.5) } }
+                    smallButton("＋") { update { $0.letterSpacing = min(3, $0.letterSpacing + 0.5) } }
+                }
+            }
+
+            rowDivider
+
+            settingRow("段间距", value: "\(Int(style.paragraphSpacing))") {
+                HStack(spacing: 8) {
+                    smallButton("−") { update { $0.paragraphSpacing = max(0, $0.paragraphSpacing - 4) } }
+                    smallButton("＋") { update { $0.paragraphSpacing = min(32, $0.paragraphSpacing + 4) } }
+                }
+            }
+
+            rowDivider
+
+            settingRow("页边距") {
+                HStack(spacing: 8) {
+                    optionChip("窄", selected: style.marginHorizontal < 20, expands: true) {
+                        update { $0.marginHorizontal = 16 }
+                    }
+                    optionChip("中", selected: style.marginHorizontal >= 20 && style.marginHorizontal < 26, expands: true) {
+                        update { $0.marginHorizontal = 22 }
+                    }
+                    optionChip("宽", selected: style.marginHorizontal >= 26, expands: true) {
+                        update { $0.marginHorizontal = 30 }
+                    }
+                }
+            }
+
+            rowDivider
+
+            settingRow("对齐") {
+                HStack(spacing: 8) {
+                    optionChip("左对齐", selected: !style.justified, expands: true) {
+                        update { $0.justified = false }
+                    }
+                    optionChip("两端对齐", selected: style.justified, expands: true) {
+                        update { $0.justified = true }
+                    }
+                }
+            }
+
+            rowDivider
+
+            settingRow("首行缩进", value: "两字") {
+                Toggle("", isOn: Binding(
+                    get: { style.indentFirstLine },
+                    set: { value in update { $0.indentFirstLine = value } }
+                ))
+                .labelsHidden()
+                .tint(Palette.accent)
+            }
         }
-        .padding(.vertical, 6)
     }
 
     // MARK: 背景
 
-    private var backgroundSection: some View {
-        row("背景", value: nil) {
-            HStack(spacing: 10) {
-                ForEach(ReaderTheme.allCases) { item in
-                    Button {
-                        theme = item
-                        onChange()
-                    } label: {
-                        Circle()
-                            .fill(item.background)
-                            .frame(width: 26, height: 26)
-                            .overlay {
-                                Circle().strokeBorder(
-                                    theme == item ? Palette.accent : Palette.line,
-                                    lineWidth: theme == item ? 2 : 1
-                                )
-                            }
+    private var backgroundCard: some View {
+        settingsCard {
+            settingRow("背景") {
+                HStack(spacing: 10) {
+                    ForEach(ReaderTheme.allCases) { item in
+                        Button {
+                            theme = item
+                            onChange()
+                        } label: {
+                            Circle()
+                                .fill(item.background)
+                                .frame(width: 26, height: 26)
+                                .overlay {
+                                    Circle().strokeBorder(
+                                        theme == item ? Palette.accent : Palette.line,
+                                        lineWidth: theme == item ? 2 : 1
+                                    )
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(item.title)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -190,32 +181,44 @@ struct TypographySheet: View {
 
     // MARK: 翻页动画
 
-    private var animationSection: some View {
+    private var animationCard: some View {
         VStack(alignment: .leading, spacing: 9) {
-            sectionTitle("翻页动画")
-            HStack(spacing: 8) {
+            Text("翻页动画")
+                .font(.system(size: 13.5))
+                .foregroundStyle(Palette.ink2)
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                spacing: 8
+            ) {
                 ForEach(PageTurnMode.allCases) { mode in
-                    optionChip(mode.title, selected: prefs.pageTurn == mode) {
+                    optionChip(mode.title, selected: prefs.pageTurn == mode, expands: true) {
                         prefs.pageTurn = mode
                     }
                 }
             }
+
             Text(prefs.pageTurn.detail)
                 .font(.system(size: 11))
                 .foregroundStyle(Palette.ink3)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 10)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Palette.line).frame(height: 1)
+        .padding(14)
+        .background(Palette.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Palette.line, lineWidth: 1)
         }
-        .padding(.top, 6)
     }
 
     // MARK: 屏幕区域
 
     private var zoneSection: some View {
         VStack(alignment: .leading, spacing: 9) {
-            sectionTitle("点击区域")
+            Text("点击区域")
+                .font(.system(size: 13.5))
+                .foregroundStyle(Palette.ink2)
 
             zoneEntry(
                 symbol: "hand.tap",
@@ -241,10 +244,6 @@ struct TypographySheet: View {
                     .font(.system(size: 11))
                     .foregroundStyle(Palette.danger)
             }
-        }
-        .padding(.vertical, 10)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Palette.line).frame(height: 1)
         }
     }
 
@@ -290,29 +289,48 @@ struct TypographySheet: View {
         onChange()
     }
 
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 13.5))
-            .foregroundStyle(Palette.ink2)
-    }
-
-    private func row<Content: View>(_ title: String,
-                                    value: String?,
-                                    @ViewBuilder content: () -> Content) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(size: 13.5))
-                .foregroundStyle(Palette.ink2)
-            if let value {
-                Text(value)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Palette.ink3)
-                    .frame(minWidth: 32, alignment: .leading)
-            }
-            Spacer()
+    private func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
             content()
         }
-        .padding(.vertical, 8)
+        .background(Palette.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Palette.line, lineWidth: 1)
+        }
+    }
+
+    private var rowDivider: some View {
+        Rectangle()
+            .fill(Palette.line)
+            .frame(height: 0.5)
+            .padding(.horizontal, 14)
+    }
+
+    /// 统一为「左标签、右控件」一行，所有行的标签和右侧控件都对齐。
+    private func settingRow<Content: View>(_ title: String,
+                                           value: String? = nil,
+                                           @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(.system(size: 13.5))
+                    .foregroundStyle(Palette.ink2)
+                if let value {
+                    Text(value)
+                        .font(.system(size: 12))
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.ink3)
+                }
+            }
+            .frame(width: 92, alignment: .leading)
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 48)
     }
 
     private func smallButton(_ title: String, action: @escaping () -> Void) -> some View {
@@ -320,21 +338,27 @@ struct TypographySheet: View {
             Text(title)
                 .font(.system(size: 12.5))
                 .foregroundStyle(Palette.ink2)
-                .frame(minWidth: 34)
-                .padding(.vertical, 5)
+                .frame(minWidth: 42)
+                .frame(height: 32)
+                .padding(.horizontal, 5)
                 .background(Color(hex: 0xEDF0F3))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
 
-    private func optionChip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func optionChip(_ title: String,
+                            selected: Bool,
+                            expands: Bool = false,
+                            action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 12.5, weight: selected ? .semibold : .regular))
                 .foregroundStyle(selected ? Color.white : Palette.ink2)
-                .padding(.horizontal, 13)
-                .frame(height: 30)
+                .lineLimit(1)
+                .padding(.horizontal, expands ? 6 : 13)
+                .frame(maxWidth: expands ? .infinity : nil)
+                .frame(height: 32)
                 .background(selected ? Palette.ink : Color(hex: 0xF0F3F6))
                 .clipShape(Capsule())
         }

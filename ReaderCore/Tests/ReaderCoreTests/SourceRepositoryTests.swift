@@ -133,7 +133,7 @@ final class SourceRepositoryTests: XCTestCase {
         XCTAssertFalse(source.enabled, "开关状态要以数据库为准")
     }
 
-    func testInvalidSourcesOnlyIncludesFailedOrTimeout() throws {
+    func testInvalidSourcesExcludesTimeouts() throws {
         let repo = SourceRepository(db: database.writer)
         try repo.upsert(BookSource(id: "ok", name: "正常", rawJson: "{}"))
         try repo.upsert(BookSource(id: "bad", name: "失败", rawJson: "{}"))
@@ -146,8 +146,10 @@ final class SourceRepositoryTests: XCTestCase {
 
         let invalid = try repo.invalidSources()
 
-        XCTAssertEqual(Set(invalid.map(\.id)), ["bad", "slow"],
-                       "正常与没测过的源不能被算成失效")
+        XCTAssertEqual(Set(invalid.map(\.id)), ["bad"],
+                       "超时不是失效：慢站点换个时间还能用，不能进删除列表")
+        XCTAssertEqual(Set(try repo.timeoutSources().map(\.id)), ["slow"],
+                       "超时的源要单独列出来供重试")
     }
 
     func testDeleteByIdsRemovesOnlyGivenSources() throws {

@@ -15,6 +15,7 @@ struct DiscoverView: View {
     @State private var loadError: String?
 
     @State private var invalidCount = 0
+    @State private var timeoutCount = 0
     @State private var isChecking = false
     @State private var checkTask: Task<Void, Never>?
     @State private var checkedCount = 0
@@ -72,10 +73,10 @@ struct DiscoverView: View {
                 .accessibilityLabel("书源管理")
             }
         }
-        .confirmationDialog("删除 \(invalidCount) 条失效书源？", isPresented: $confirmDeleteInvalid, titleVisibility: .visible) {
-            Button("删除失效源", role: .destructive) { deleteInvalid() }
+        .confirmationDialog("删除 \(invalidCount) 条明确失败的书源？", isPresented: $confirmDeleteInvalid, titleVisibility: .visible) {
+            Button("删除失败源", role: .destructive) { deleteInvalid() }
         } message: {
-            Text("只删当前分类里上次测试明确失败或超时的源，正常的源不动。")
+            Text("只删当前分类里明确失败的源（404、解析错误、脚本报错）。超时的源不会出现在这里，也不会被删除。")
         }
         .sheet(isPresented: $showingImport) {
             SourceImportSheet(category: kind == .comic ? .comic : .novel) { _ in reload() }
@@ -189,7 +190,7 @@ struct DiscoverView: View {
                 Text("书源维护 · \(kindTitle)")
                     .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(Palette.ink)
-                Text("只测试当前分类的\(kindTitle)，逐个请求搜索接口，5 秒超时；测完可以一键删掉失效源。")
+                Text("只测试当前分类的\(kindTitle)。先做一轮快速搜索（普通源 5 秒、Venera 12 秒）；超时会自动用更长时限（普通 20 秒、Venera 45 秒）重试一次，仍超时只记为「超时」，不算失效、不会删除。")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.ink3)
                     .lineSpacing(2)
@@ -217,7 +218,7 @@ struct DiscoverView: View {
                     Button {
                         confirmDeleteInvalid = true
                     } label: {
-                        Text("删除失效 \(invalidCount)")
+                        Text("删除失败 \(invalidCount)")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(invalidCount > 0 ? Palette.danger : Palette.ink3.opacity(0.6))
                             .frame(maxWidth: .infinity)
@@ -231,6 +232,13 @@ struct DiscoverView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(invalidCount == 0 || isChecking)
+                }
+
+                if timeoutCount > 0 {
+                    Text("有 \(timeoutCount) 条上次测试超时（可能是旧版快速检测留下的），已保留；重新测试会自动加长重试。")
+                        .font(Typo.micro)
+                        .foregroundStyle(Palette.ink2)
+                        .lineSpacing(2)
                 }
 
                 if let maintenanceMessage {
@@ -249,7 +257,7 @@ struct DiscoverView: View {
                 Text("关于书源")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Palette.ink2)
-                Text("书源是社区维护的站点解析规则。源站改版会导致规则失效，这时「测一下」会显示超时或失败——关掉它就行，不影响其他源。")
+                Text("书源是社区维护的站点解析规则。源站改版会导致规则失效，这时「测一下」会显示明确失败——那种源可以关掉或删除；超时只是这次没响应，会保留，换网络或稍后再测即可。")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.ink3)
                     .lineSpacing(3)
@@ -269,6 +277,8 @@ struct DiscoverView: View {
             enabledCount = all.filter { $0.enabled && (($0.type == 2) == wantsComic) }.count
             let invalid = (try? env.sources.invalidSources()) ?? []
             invalidCount = invalid.filter { ($0.type == 2) == wantsComic }.count
+            let timedOut = (try? env.sources.timeoutSources()) ?? []
+            timeoutCount = timedOut.filter { ($0.type == 2) == wantsComic }.count
             loadError = nil
         } catch {
             loadError = error.localizedDescription
@@ -305,12 +315,16 @@ struct DiscoverView: View {
         checkTask = Task {
             await withTaskGroup(of: (String, SourceHealthStatus).self) { group in
                 var iterator = wanted.makeIterator()
-                let width = min(8, wanted.count)
+                let width = min(wantsComic ? 4 : 8, wanted.count)
 
                 func status(for target: SearchTarget) async -> SourceHealthStatus {
                     switch target {
-                    case .legado(let source): return await checker.check(source)
-                    case .venera(let source): return await checker.check(source)
+                    case .legado(let source):
+                        // 首轮 5 秒；超时后再给 20 秒，和实际搜索的 15 秒同一量级。
+                        return await checker.check(source, retryTimeout: 20)
+                    case .venera(let source):
+                        // Venera 要初始化 JS 运行时；真实搜索至少 30 秒，测试不能拿 12 秒判死。
+                        return await checker.check(source, retryTimeout: 45)
                     }
                 }
 
@@ -343,7 +357,15 @@ struct DiscoverView: View {
                 checkTask = nil
                 reload()
                 if checkedCount >= checkTotal {
-                    maintenanceMessage = "检测完成：\(invalidCount) 条失效，可一键删除。"
+                    let failed = invalidCount
+                    let timedOut = timeoutCount
+                    if failed > 0 {
+                        maintenanceMessage = "检测完成：\(failed) 条明确失败，可删除；\(timedOut) 条超时，已保留。"
+                    } else if timedOut > 0 {
+                        maintenanceMessage = "检测完成：没有明确失败；\(timedOut) 条超时，已自动重试仍无响应，保留了，没有删除。"
+                    } else {
+                        maintenanceMessage = "检测完成：全部正常。"
+                    }
                 }
             }
         }
@@ -353,12 +375,12 @@ struct DiscoverView: View {
         let all = (try? env.sources.invalidSources()) ?? []
         let invalid = all.filter { ($0.type == 2) == wantsComic }
         guard !invalid.isEmpty else {
-            maintenanceMessage = "没有可删除的失效源。"
+            maintenanceMessage = "没有可删除的明确失败源。"
             return
         }
         try? env.sources.delete(ids: invalid.map(\.id))
         reload()
-        maintenanceMessage = "已删除 \(invalid.count) 条失效书源。"
+        maintenanceMessage = "已删除 \(invalid.count) 条明确失败的书源；超时源已保留。"
     }
 
     private static func checkResultText(_ status: SourceHealthStatus) -> String {

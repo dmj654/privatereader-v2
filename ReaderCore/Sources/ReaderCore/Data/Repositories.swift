@@ -259,11 +259,22 @@ public struct SourceRepository {
         try db.write { _ = try BookSource.deleteAll($0) }
     }
 
-    /// 上次体检明确失败或超时的源。没检测过的（lastCheckResult 为空）不算。
+    /// 上次体检**明确失败**的源。超时不算失效：站点慢、网络抖动都会超时，
+    /// 但换个时间还能用，把它当成失效源删掉会造成误删。没测过的也不算。
     public func invalidSources() throws -> [BookSource] {
         try db.read {
             try BookSource
-                .filter(sql: "lastCheckResult LIKE 'failed%' OR lastCheckResult = 'timeout'")
+                .filter(sql: "lastCheckResult LIKE 'failed%'")
+                .order(Column("name"))
+                .fetchAll($0)
+        }
+    }
+
+    /// 上次体检超时的源。单独列出来给界面提示“可重试”，绝不自动删除。
+    public func timeoutSources() throws -> [BookSource] {
+        try db.read {
+            try BookSource
+                .filter(sql: "lastCheckResult = 'timeout'")
                 .order(Column("name"))
                 .fetchAll($0)
         }
