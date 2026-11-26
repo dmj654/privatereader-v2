@@ -1,0 +1,51 @@
+name: PrivateReader
+
+options:
+  bundleIdPrefix: com.dmj654
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+packages:
+  ReaderCore:
+    path: ReaderCore
+  Kingfisher:
+    url: https://github.com/onevcat/Kingfisher.git
+    from: 7.0.0
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  PrivateReader:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: App
+    dependencies:
+      - package: ReaderCore
+      - package: Kingfisher
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dmj654.privatereader
+        PRODUCT_NAME: PrivateReader
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_FILE: App/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+
+schemes:
+  PrivateReader:
+    build:
+      targets:
+        PrivateReader: all
+    run:
+      config: Debug
+    test:
+      config: Debug

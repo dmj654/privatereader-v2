@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>私阅读 · 页面结构与交互设计 v1</title>
+<style>
+  :root{
+    --bg:#FAF9F7; --card:#fff; --line:#E7E2DB; --ink:#1F1C18; --ink2:#5A534C;
+    --muted:#918A82; --accent:#B85C3E; --accent-soft:#FBEFE9;
+    --wf-line:#DBD6CF; --wf-fill:#F2EFEB; --wf-fill2:#E5E0D9; --wf-text:#9C958D; --wf-ink:#37322C;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif;
+    font-size:14px;line-height:1.75;-webkit-font-smoothing:antialiased;
+  }
+  .shell{display:flex;max-width:1200px;margin:0 auto;padding:0 32px;align-items:flex-start;}
+
+  /* ---------- TOC ---------- */
+  .toc{position:sticky;top:0;width:186px;flex:0 0 186px;padding:44px 0 40px;font-size:12.5px;}
+  .toc .toc-h{font-size:11px;letter-spacing:1.4px;color:var(--muted);text-transform:uppercase;}
+  .toc ol{list-style:none;padding:0;margin:12px 0 0;counter-reset:t;}
+  .toc li{counter-increment:t;}
+  .toc a{color:var(--ink2);text-decoration:none;display:block;padding:5px 0 5px 13px;border-left:2px solid transparent;transition:.15s;}
+  .toc a::before{content:counter(t) "  ";color:var(--muted);font-variant-numeric:tabular-nums;}
+  .toc a:hover{color:var(--accent);border-color:var(--accent);}
+
+  /* ---------- layout ---------- */
+  main{flex:1;min-width:0;padding:44px 0 120px 46px;border-left:1px solid var(--line);}
+  section{margin-bottom:64px;scroll-margin-top:24px;}
+  h1{font-size:31px;line-height:1.25;margin:0 0 10px;letter-spacing:-.6px;font-weight:700;}
+  .lede{font-size:15px;color:var(--ink2);margin:0 0 18px;max-width:660px;}
+  .meta{display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);padding-top:14px;border-top:1px solid var(--line);}
+  .meta b{color:var(--ink2);font-weight:600;}
+
+  h2{font-size:19px;margin:0 0 6px;letter-spacing:-.2px;font-weight:700;display:flex;align-items:baseline;gap:10px;}
+  h2 .num{font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1px;background:var(--accent-soft);padding:2px 7px;border-radius:5px;}
+  .sec-note{color:var(--ink2);font-size:13px;margin:0 0 24px;max-width:700px;}
+  h3{font-size:14.5px;margin:26px 0 10px;font-weight:600;}
+  p{margin:0 0 12px;}
+
+  /* ---------- premise ---------- */
+  .premise{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 20px;}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
+  .pcard .k{font-size:10.5px;letter-spacing:1px;color:var(--muted);margin-bottom:3px;}
+  .pcard .v{font-size:13px;font-weight:600;}
+  .rules{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 26px;}
+  .rules li{font-size:12.5px;color:var(--ink2);padding-left:16px;position:relative;}
+  .rules li::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;background:var(--accent);}
+  .rules li b{color:var(--ink);font-weight:600;}
+
+  /* ---------- map ---------- */
+  .map{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .mcol{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 13px 14px;position:relative;}
+  .mcol .root{font-size:10.5px;color:var(--muted);letter-spacing:.6px;margin-bottom:2px;}
+  .mcol .tab{font-size:14px;font-weight:700;padding-bottom:9px;border-bottom:1px dashed var(--line);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .mcol .tab span{width:18px;height:18px;border-radius:5px;background:var(--wf-fill2);display:inline-block;}
+  .mitem{font-size:12px;color:var(--ink2);padding:4px 8px;background:#F7F5F2;border-radius:6px;margin-bottom:5px;}
+  .mitem.acc{background:var(--accent-soft);color:#8C4229;}
+  .mchain{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+  .mchain .ch-t{font-size:11px;color:var(--muted);letter-spacing:.6px;margin-bottom:10px;}
+
+  /* ---------- wireframes ---------- */
+  .wf-grid2{display:grid;grid-template-columns:repeat(2,320px);gap:26px 28px;}
+  .wf-grid3{display:grid;grid-template-columns:repeat(3,280px);gap:24px 18px;}
+  figure{margin:0;}
+  figcaption{font-size:12px;color:var(--ink2);margin-top:10px;line-height:1.6;}
+  figcaption b{color:var(--ink);display:block;font-size:12.5px;margin-bottom:3px;}
+  figcaption .anno{display:block;font-size:11.5px;color:var(--muted);margin-top:4px;}
+
+  .phone{
+    width:320px;height:690px;border:9px solid #2B2724;border-radius:36px;background:#fff;
+    overflow:hidden;position:relative;box-shadow:0 14px 34px rgba(40,32,24,.13);
+  }
+  .phone.sm{width:280px;height:604px;border-width:8px;border-radius:32px;}
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;background:#fff;font-size:10px;color:var(--wf-ink);}
+  .sb{flex:0 0 24px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:8.5px;color:var(--wf-text);}
+  .sb .r{letter-spacing:2px;}
+  .body{flex:1;overflow:hidden;min-height:0;}
+
+  .wf-hd{display:flex;align-items:flex-start;justify-content:space-between;padding:4px 16px 12px;}
+  .wf-hd .t1{font-size:19px;font-weight:700;letter-spacing:-.4px;line-height:1.2;}
+  .wf-hd .t0{font-size:9px;color:var(--wf-text);margin-bottom:2px;}
+  .icons{display:flex;gap:7px;padding-top:4px;}
+  .ico{width:22px;height:22px;border-radius:7px;background:var(--wf-fill);border:1px solid var(--wf-line);}
+  .ico.solid{background:var(--wf-fill2);}
+
+  .wf-lab{display:flex;align-items:baseline;justify-content:space-between;padding:0 16px;margin:1px 0 6px;}
+  .wf-lab .l{font-size:9.5px;color:var(--wf-text);letter-spacing:.4px;}
+  .wf-lab .r{font-size:8.5px;color:var(--wf-text);}
+
+  .cov{border-radius:5px;border:1px solid var(--wf-line);background:repeating-linear-gradient(48deg,#F3F0EC 0 5px,#EAE6E0 5px 10px);position:relative;overflow:hidden;}
+  .cov .bd{position:absolute;top:3px;right:3px;background:#3A342E;color:#fff;font-size:6.5px;padding:0 3px;border-radius:3px;line-height:1.5;}
+  .ln{height:5px;background:var(--wf-fill2);border-radius:3px;}
+  .bar{height:3px;background:#EDE9E3;border-radius:2px;overflow:hidden;}
+  .bar i{display:block;height:100%;background:#B0A79D;}
+  .pill{font-size:8.5px;padding:3px 9px;border:1px solid var(--wf-line);border-radius:20px;color:var(--wf-text);background:#fff;white-space:nowrap;}
+  .pill.on{background:#37322C;color:#fff;border-color:#37322C;}
+  .chips{display:flex;gap:6px;padding:0 16px;margin-bottom:12px;overflow:hidden;}
+
+  /* continue card */
+  .cont{display:flex;gap:10px;margin:0 16px 10px;padding:9px;border:1px solid var(--wf-line);border-radius:11px;background:#fff;align-items:center;}
+  .cont .cov{width:42px;height:56px;flex:0 0 42px;}
+  .cont .info{flex:1;min-width:0;}
+  .cont .bt{font-size:11.5px;font-weight:600;margin-bottom:3px;}
+  .cont .bs{font-size:8.5px;color:var(--wf-text);margin-bottom:6px;}
+  .cont .go{flex:0 0 auto;font-size:9px;background:#37322C;color:#fff;padding:5px 9px;border-radius:7px;}
+
+  .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:0 16px;margin-bottom:11px;}
+  .row4 .it .cov{width:100%;aspect-ratio:3/4.2;}
+  .row4 .it .nm{font-size:8px;color:var(--wf-text);margin-top:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+
+  .upd{display:flex;align-items:center;gap:9px;padding:7px 16px;}
+  .upd .cov{width:26px;height:34px;flex:0 0 26px;border-radius:4px;}
+  .upd .nm{font-size:9.5px;font-weight:600;flex:1;}
+  .upd .tg{font-size:8px;color:#8C4229;background:#FBEFE9;padding:1px 6px;border-radius:9px;}
+
+  .stat{margin:0 16px 4px;border:1px solid var(--wf-line);border-radius:11px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;background:#FBFAF8;}
+  .stat .big{font-size:14px;font-weight:700;letter-spacing:-.3px;}
+  .stat .sm{font-size:8px;color:var(--wf-text);margin-top:2px;}
+
+  /* bookshelf grid */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px 11px;padding:0 16px;}
+  .grid3 .cov{width:100%;aspect-ratio:3/4.1;}
+  .grid3 .nm{font-size:8.5px;margin-top:5px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .grid3 .bar{margin-top:4px;}
+
+  /* discover */
+  .searchbar{margin:0 16px 14px;height:32px;border-radius:9px;background:var(--wf-fill);display:flex;align-items:center;padding:0 10px;gap:6px;font-size:9px;color:var(--wf-text);}
+  .imp{margin:0 16px 14px;border:1px dashed #C9C2B9;border-radius:9px;padding:9px 11px;display:flex;align-items:center;justify-content:space-between;background:#FCFAF7;}
+  .imp .a{font-size:9.5px;font-weight:600;}
+  .imp .b{font-size:8px;color:var(--wf-text);margin-top:1px;}
+  .seg{display:flex;margin:0 16px 10px;border:1px solid var(--wf-line);border-radius:8px;overflow:hidden;}
+  .seg div{flex:1;text-align:center;font-size:9px;padding:5px 0;color:var(--wf-text);}
+  .seg div.on{background:var(--wf-fill);color:var(--wf-ink);font-weight:600;}
+  .cats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:0 16px;}
+  .cats div{border:1px solid var(--wf-line);border-radius:7px;text-align:center;font-size:8.5px;padding:8px 0;color:var(--wf-text);}
+
+  /* search result */
+  .res-hd{display:flex;align-items:center;gap:6px;padding:9px 16px 6px;font-size:9px;color:var(--wf-text);}
+  .res-hd .dot{width:5px;height:5px;border-radius:50%;background:#B0A79D;}
+  .res{display:flex;gap:9px;padding:8px 16px;align-items:center;border-bottom:1px solid #F2EFEB;}
+  .res .cov{width:32px;height:44px;flex:0 0 32px;border-radius:4px;}
+  .res .info{flex:1;min-width:0;}
+  .res .t{font-size:10px;font-weight:600;}
+  .res .s{font-size:8px;color:var(--wf-text);margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .res .add{font-size:8px;border:1px solid var(--wf-line);border-radius:5px;padding:2px 6px;color:var(--wf-text);}
+  .skel{padding:0 16px;}
+  .skel .r{height:38px;background:linear-gradient(90deg,#F4F1ED 25%,#FAF8F5 37%,#F4F1ED 63%);background-size:400% 100%;border-radius:6px;margin-bottom:6px;}
+  .fail{margin:0 16px;border:1px solid #EFE3DC;background:#FDF5F1;border-radius:8px;padding:9px 11px;font-size:8.5px;color:#96604A;display:flex;justify-content:space-between;align-items:center;}
+  .fail b{font-size:8.5px;text-decoration:underline;font-weight:600;}
+
+  /* tabbar */
+  .tabbar{flex:0 0 56px;border-top:1px solid var(--wf-line);display:flex;padding-bottom:8px;background:#fff;}
+  .tabbar .ti{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:8px;color:var(--wf-text);}
+  .tabbar .ti i{width:16px;height:16px;border-radius:5px;background:var(--wf-fill2);display:block;}
+  .tabbar .ti.on{color:#37322C;font-weight:700;}
+  .tabbar .ti.on i{background:#37322C;}
+
+  /* detail */
+  .dt-hero{padding:10px 16px 12px;display:flex;gap:12px;background:#FBFAF8;border-bottom:1px solid #F2EFEB;}
+  .dt-hero .cov{width:70px;height:98px;flex:0 0 70px;border-radius:6px;}
+  .dt-hero .info{flex:1;padding-top:2px;}
+  .dt-hero .t{font-size:14px;font-weight:700;line-height:1.3;}
+  .dt-hero .a{font-size:9px;color:var(--wf-text);margin:4px 0 8px;}
+  .tags{display:flex;gap:4px;flex-wrap:wrap;}
+  .desc{padding:11px 16px;font-size:9px;line-height:1.7;color:#6E6660;}
+  .btns{display:flex;gap:9px;padding:0 16px 12px;}
+  .btns .b1{flex:1;background:#37322C;color:#fff;text-align:center;font-size:10px;padding:8px 0;border-radius:8px;font-weight:600;}
+  .btns .b2{flex:0 0 84px;border:1px solid var(--wf-line);text-align:center;font-size:10px;padding:8px 0;border-radius:8px;color:var(--wf-ink);}
+
+  /* reader */
+  .rd-top{flex:0 0 40px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #F2EFEB;font-size:9px;color:var(--wf-text);}
+  .rd-top .ct{font-size:9px;}
+  .rd-body{padding:16px 20px;}
+  .rd-ch{font-size:11.5px;font-weight:700;margin-bottom:11px;}
+  .rd-p{height:4px;background:#E7E2DB;border-radius:2px;margin-bottom:9px;}
+  .rd-p:nth-child(3n+2){width:94%;}
+  .rd-p:nth-child(3n){width:87%;}
+  .rd-p:last-child{width:54%;}
+  .rd-bot{flex:0 0 46px;border-top:1px solid #F2EFEB;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:9px;color:var(--wf-text);}
+  .rd-bot .sl{flex:1;height:3px;background:#EDE9E3;border-radius:2px;position:relative;}
+  .rd-bot .sl i{position:absolute;left:0;top:0;height:100%;width:34%;background:#B0A79D;border-radius:2px;}
+  .rd-bot .sl u{position:absolute;left:34%;top:-3px;width:9px;height:9px;border-radius:50%;background:#37322C;}
+  .comic{flex:1;background:repeating-linear-gradient(48deg,#F3F0EC 0 6px,#E9E5DF 6px 12px);position:relative;display:flex;align-items:center;justify-content:center;}
+  .comic .pg{font-size:9px;background:rgba(255,255,255,.9);padding:3px 9px;border-radius:10px;color:var(--wf-text);position:absolute;bottom:14px;left:50%;transform:translateX(-50%);}
+
+  /* settings sheet */
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--wf-line);border-radius:14px 14px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.07);padding:12px 16px 26px;}
+  .sheet::after{content:"";display:block;width:96px;height:4px;background:#DDD8D1;border-radius:2px;margin:12px auto 0;}
+  .sheet .hnd{width:32px;height:3px;background:var(--wf-fill2);border-radius:2px;margin:0 auto 12px;}
+  .srow{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;font-size:9px;color:var(--wf-text);}
+  .stepper{display:flex;gap:0;border:1px solid var(--wf-line);border-radius:6px;overflow:hidden;}
+  .stepper span{padding:2px 9px;font-size:9px;border-right:1px solid var(--wf-line);}
+  .stepper span:last-child{border-right:none;}
+  .stepper span.on{background:var(--wf-fill);color:var(--wf-ink);font-weight:600;}
+  .swatches{display:flex;gap:6px;}
+  .swatches i{width:18px;height:18px;border-radius:50%;border:1px solid var(--wf-line);display:block;}
+  .dim{position:absolute;inset:0;background:rgba(30,26,22,.28);}
+
+  /* source list */
+  .src{display:flex;align-items:center;gap:9px;padding:9px 16px;border-bottom:1px solid #F2EFEB;}
+  .src .nm{font-size:9.5px;font-weight:600;flex:1;}
+  .src .st{font-size:7.5px;color:var(--wf-text);}
+  .toggle{width:26px;height:15px;border-radius:10px;background:#37322C;position:relative;flex:0 0 26px;}
+  .toggle::after{content:"";position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#fff;}
+  .toggle.off{background:#DDD8D1;}
+  .toggle.off::after{right:auto;left:2px;}
+
+  /* toc page */
+  .chp{display:flex;justify-content:space-between;padding:9px 16px;border-bottom:1px solid #F7F5F2;font-size:9px;color:#5A534C;}
+  .chp.on{background:#FBF7F4;color:#8C4229;font-weight:700;border-left:2px solid var(--accent);padding-left:14px;}
+
+  /* ---------- flow ---------- */
+  .flowbox{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:13px;}
+  .flowbox .ft{font-size:12.5px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .flowbox .ft em{font-style:normal;font-size:10px;color:var(--muted);font-weight:400;}
+  .flow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .step{background:#F7F5F2;border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:11.5px;color:var(--ink2);}
+  .step.hi{background:var(--accent-soft);border-color:#EBCFBF;color:#8C4229;}
+  .step small{display:block;font-size:9.5px;color:var(--muted);line-height:1.4;}
+  .arw{color:#BDB5AC;font-size:12px;}
+
+  /* ---------- tables ---------- */
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:12.5px;table-layout:fixed;}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;color:var(--ink2);}
+  th{background:#F6F4F1;font-weight:600;color:var(--ink);font-size:12px;white-space:nowrap;}
+  td b{color:var(--ink);font-weight:600;}
+  tbody tr:nth-child(even){background:#FCFBF9;}
+
+  /* ---------- decisions ---------- */
+  .dec{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .dec .row{display:flex;gap:14px;padding:12px 16px;border-bottom:1px solid var(--line);font-size:12.5px;}
+  .dec .row:last-child{border-bottom:none;}
+  .dec .tag{flex:0 0 62px;font-size:10px;letter-spacing:.6px;color:var(--muted);padding-top:2px;}
+  .dec .tag.ok{color:#5E7C5A;}
+  .dec .tag.q{color:var(--accent);font-weight:600;}
+  .dec .c{flex:1;color:var(--ink2);}
+  .dec .c b{color:var(--ink);}
+
+  .warn{background:#FDF7F3;border:1px solid #EFDFD3;border-radius:9px;padding:12px 15px;font-size:12.5px;color:#7D5642;margin-top:14px;}
+  .warn b{color:#6B4534;}
+
+  /* ---- tts ---- */
+  .txblock{flex:1;min-height:0;position:relative;background:repeating-linear-gradient(to bottom,#E7E2DB 0 4px,transparent 4px 15px);}
+  .hlbar{position:absolute;left:-7px;right:-7px;background:rgba(184,92,62,.11);border-left:3px solid rgba(184,92,62,.8);border-radius:3px;}
+  .wtts{flex:0 0 auto;position:relative;border-top:1px solid var(--wf-line);background:#FBF9F7;padding:7px 10px 12px;}
+  .wfab{position:absolute;right:8px;top:-13px;width:25px;height:25px;border-radius:50%;background:#37322C;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #FBF9F7;z-index:3;}
+  .vst{position:absolute;right:5px;bottom:calc(100% + 8px);z-index:3;display:flex;flex-direction:column;gap:7px;}
+  .vbtnw{width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid var(--wf-line2);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 7px -5px rgba(0,0,0,.4);}
+  .vbtnw.on{background:#37322C;border-color:#37322C;}
+  .wsl{display:flex;align-items:center;gap:8px;margin:5px 2px 11px;}
+  .wsl .lb{font-size:7.5px;color:var(--wf-text);white-space:nowrap;}
+  .wtrack{flex:1;height:3px;border-radius:2px;background:#E5E0D9;position:relative;}
+  .wtrack i{position:absolute;left:0;top:0;height:100%;width:42%;background:#37322C;border-radius:2px;}
+  .wtrack u{position:absolute;left:42%;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;background:#37322C;border:2px solid #FBF9F7;}
+  .wring{width:26px;height:26px;border-radius:50%;position:relative;background:conic-gradient(#37322C 0 66%,#E5E0D9 66% 100%);display:flex;align-items:center;justify-content:center;margin-top:-3px;}
+  .wring::before{content:"";position:absolute;inset:3.5px;border-radius:50%;background:#FBF9F7;}
+  .wring b{position:relative;font-size:5.5px;font-weight:700;color:#37322C;letter-spacing:-.2px;}
+  .wtts .grab{width:30px;height:3px;border-radius:2px;background:var(--wf-fill2);margin:0 auto 9px;}
+  .wr1{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:11px;}
+  .wr1>span,.wr2 .grp>span{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:7.5px;color:var(--wf-text);}
+  .wr1>span svg,.wr2 svg{display:block;}
+  .wr1 .mid{color:var(--wf-ink);font-weight:700;}
+  .pbw{width:22px;height:22px;border-radius:50%;background:#37322C;color:#fff;font-size:7px;display:flex;align-items:center;justify-content:center;margin-top:-3px;}
+  .wr2{display:flex;align-items:flex-start;}
+  .wr2 .grp{flex:1;display:flex;}
+  .exitw{flex:0 0 auto;background:#37322C;color:#fff;font-size:8.5px;font-weight:600;padding:6px 15px;border-radius:13px;align-self:center;}
+
+  .ttsbar{display:flex;align-items:center;gap:9px;margin:0 14px 10px;padding:8px 10px;border-radius:12px;background:#37322C;color:#fff;}
+  .ttsbar .pb{width:22px;height:22px;border-radius:50%;background:#fff;color:#37322C;font-size:7px;display:flex;align-items:center;justify-content:center;flex:0 0 22px;font-weight:700;}
+  .ttsbar .tx{flex:1;min-width:0;}
+  .ttsbar .tx b{display:block;font-size:9px;font-weight:600;line-height:1.4;}
+  .ttsbar .tx span{font-size:7.5px;opacity:.66;}
+  .ttsbar .wv{display:flex;align-items:flex-end;gap:1.5px;height:13px;flex:0 0 auto;}
+  .ttsbar .wv i{width:2px;background:#fff;border-radius:1px;display:block;opacity:.8;}
+  .ttsbar .x{font-size:9px;opacity:.55;}
+
+  /* 目录抽屉 */
+  .wdim{position:absolute;inset:0;background:rgba(30,26,22,.22);z-index:2;}
+  .wdrawer{position:absolute;left:0;top:0;bottom:0;width:240px;background:#FCFBF9;z-index:3;display:flex;flex-direction:column;
+    padding-top:24px;box-shadow:10px 0 22px -16px rgba(0,0,0,.5);}
+  .wdh{display:flex;gap:8px;padding:4px 10px 9px;align-items:flex-start;}
+  .wdh .cov{width:30px;height:40px;flex:0 0 30px;border-radius:3px;}
+  .wdh .t{font-size:9px;font-weight:700;line-height:1.35;}
+  .wdh .a{font-size:7.5px;color:var(--wf-text);margin-top:3px;}
+  .wdt{display:flex;gap:11px;padding:0 10px;border-bottom:1px solid var(--wf-line);align-items:flex-end;}
+  .wdt span{font-size:8.5px;color:var(--wf-text);padding:4px 0 6px;position:relative;}
+  .wdt span.on{color:#37322C;font-weight:700;}
+  .wdt span.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:#37322C;}
+  .wdt .sp{margin-left:auto;font-size:6.5px;color:var(--wf-text);padding-bottom:8px;}
+  .wds{margin:7px 10px 4px;height:22px;border-radius:6px;background:var(--wf-fill);display:flex;align-items:center;padding:0 8px;font-size:7.5px;color:var(--wf-text);}
+  .wdl{flex:1;min-height:0;overflow:hidden;}
+  .wdr{padding:9px 10px;font-size:8.5px;color:#5A534C;border-bottom:1px solid #F4F1EC;}
+  .wdr.on{color:#8C4229;font-weight:700;}
+  /* ---- comic（浅色） ---- */
+  .screen.dark{background:#F1F3F6;}
+  .screen.dark .sb{color:#141A22;}
+  .dark-top{flex:0 0 38px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:9px;color:#5A6575;border-bottom:1px solid #E7EAEF;}
+  .dark-bot{flex:0 0 44px;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:9px;color:#5A6575;border-top:1px solid #E7EAEF;}
+  .dark-bot .sl{flex:1;height:3px;background:#E1E7ED;border-radius:2px;position:relative;}
+  .dark-bot .sl i{position:absolute;left:0;top:0;height:100%;width:25%;background:#B85C3E;border-radius:2px;}
+  .dark-bot .sl u{position:absolute;left:25%;top:-2px;width:8px;height:8px;border-radius:50%;background:#B85C3E;border:2px solid #fff;}
+  .comic-full{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;background:#F1F3F6;}
+  .pgimg{width:88%;height:92%;background:repeating-linear-gradient(52deg,#F2EFE9 0 7px,#E6E1D8 7px 14px);border:1px solid #E4E9EF;}
+  .pgnum{position:absolute;right:10px;bottom:12px;font-size:7.5px;color:#8B96A6;background:rgba(255,255,255,.92);border:1px solid #E7EAEF;padding:2px 7px;border-radius:9px;}
+  .pgnum.mid{right:auto;left:50%;transform:translateX(-50%);bottom:10px;}
+  .strip{flex:1;min-height:0;position:relative;overflow:hidden;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;background:#F1F3F6;}
+  .seg{width:88%;flex:0 0 auto;background:repeating-linear-gradient(52deg,#F2EFE9 0 7px,#E6E1D8 7px 14px);border:1px solid #E4E9EF;}
+  .vprog{position:absolute;right:4px;top:44px;bottom:44px;width:3px;background:rgba(20,26,34,.1);border-radius:2px;}
+  .vprog i{display:block;width:100%;height:38%;background:#B0A79D;border-radius:2px;}
+  .floatpill{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;font-size:7.5px;color:#5A534C;background:rgba(255,255,255,.94);border:1px solid #E7EAEF;padding:3px 9px;border-radius:10px;white-space:nowrap;}
+  .sheet.dk{background:#FCFBF9;}
+  .sheet.dk .hnd{background:#D3DAE2;}
+  .sheet.dk .srow{color:#5A534C;}
+  .sheet.dk .stepper{border-color:var(--wf-line);}
+  .sheet.dk .stepper span{border-right-color:var(--wf-line);color:#5A534C;}
+  .sheet.dk .stepper span.on{background:var(--wf-fill);color:#37322C;}
+  .sheet.dk .swatches i{border-color:rgba(16,24,40,.12);}
+  .screen.dark .pill{border-color:var(--wf-line);color:#5A534C;background:#fff;}
+  .screen.dark .pill.on{background:#37322C;color:#fff;border-color:#37322C;}
+  .dchp{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;font-size:9px;color:#5A534C;border-bottom:1px solid #F4F1EC;}
+  .dchp.on{background:#FBF3EE;color:#8C4229;font-weight:700;}
+  .dchp span:last-child{font-size:7.5px;color:#9C958D;font-weight:400;}
+  .wcpanel{border-top:1px solid var(--wf-line);background:#FCFBF9;padding:7px 10px 12px;}
+  .wcpA{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+  .wcpill{font-size:7px;font-weight:700;color:#8C4229;background:#FBF3EE;padding:2px 7px;border-radius:6px;}
+  .wcpn{font-size:7px;color:var(--wf-text);}
+  .wcpB{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+  .wcbtn{width:24px;height:20px;border-radius:6px;background:var(--wf-fill);display:flex;align-items:center;justify-content:center;flex:0 0 24px;font-size:7px;color:#5A534C;}
+  .wcsd{flex:1;height:3px;border-radius:2px;background:#E5E0D9;position:relative;}
+  .wcsd i{position:absolute;left:0;top:0;height:100%;width:25%;background:#37322C;border-radius:2px;}
+  .wcsd u{position:absolute;left:25%;top:-2px;width:8px;height:8px;border-radius:50%;background:#37322C;}
+  .wcpC{display:flex;justify-content:space-around;}
+  .wcpC span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:7px;color:var(--wf-text);flex:1;}
+
+  /* ---- gesture zone ---- */
+  .gzone{display:grid;grid-template-columns:1fr 1fr 1fr;max-width:645px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;margin:6px 0 12px;}
+  .gzone>div{padding:20px 12px;text-align:center;border-right:1px dashed var(--line);}
+  .gzone>div:last-child{border-right:none;}
+  .gzone b{display:block;font-size:12.5px;color:var(--ink);margin-bottom:4px;}
+  .gzone small{font-size:11px;color:var(--muted);line-height:1.65;display:block;}
+  .gzone .core{background:var(--accent-soft);}
+  .glegend{font-size:11.5px;color:var(--muted);margin:0 0 28px;}
+
+  @media (max-width:1080px){
+    .toc{display:none;}
+    main{border-left:none;padding-left:0;}
+    .wf-grid2{grid-template-columns:1fr;}
+    .wf-grid3{grid-template-columns:1fr;}
+    .map{grid-template-columns:1fr 1fr;}
+    .rules{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="toc">
+    <div class="toc-h">目录</div>
+    <ol>
+      <li><a href="#s1">设计前提</a></li>
+      <li><a href="#s2">页面地图</a></li>
+      <li><a href="#s3">四个主页面</a></li>
+      <li><a href="#s4">通用二级页面</a></li>
+      <li><a href="#s5">阅读器 · 小说</a></li>
+      <li><a href="#s6">阅读器 · 漫画</a></li>
+      <li><a href="#s7">关键流程</a></li>
+      <li><a href="#s8">交互规则</a></li>
+      <li><a href="#s9">状态清单</a></li>
+      <li><a href="#s10">待拍板</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <section id="s0" style="margin-bottom:44px;">
+      <h1>私阅读 · 页面结构与交互设计</h1>
+      <p class="lede">单机 iOS 小说 / 漫画阅读器。这一版只定义<b>页面怎么分、元素放哪里、操作发生什么</b>，不涉及视觉风格，也不含代码。</p>
+      <div style="background:#FDF7F3;border:1px solid #EFDFD3;border-radius:9px;padding:11px 14px;font-size:12.5px;color:#7D5642;margin:0 0 18px;max-width:700px;">
+        <b>v1.1 改了什么：</b>补上小说阅读器的<b>朗读（边听边读）</b>；把漫画阅读器从"一个灰框"重做成完整一节，含阅读模式、手势热区、设置项、话目录。上一版把听书列进"不做"是判断失误。
+      </div>
+      <div class="meta">
+        <span><b>版本</b> v1.1 · 补朗读与漫画阅读器</span>
+        <span><b>平台</b> iOS 单机 · iPhone 竖屏</span>
+        <span><b>日期</b> 2026-11-21</span>
+        <span><b>下一步</b> 确认后进入视觉与原型</span>
+      </div>
+    </section>
+
+    <!-- 1 -->
+    <section id="s1">
+      <h2><span class="num">01</span>设计前提</h2>
+      <p class="sec-note">上一轮已确认的三件事，是这份设计的地基。任何页面如果违背它们，就是我设计错了。</p>
+      <div class="premise">
+        <div class="pcard"><div class="k">内容来源</div><div class="v">本地文件 + 在线书源</div></div>
+        <div class="pcard"><div class="k">运行形态</div><div class="v">iOS 原生 · 侧载安装</div></div>
+        <div class="pcard"><div class="k">数据归属</div><div class="v">全在本地 · 无账号</div></div>
+      </div>
+      <h3>由此推导出的四条设计原则</h3>
+      <ul class="rules">
+        <li><b>单手可达</b>——所有高频操作放在屏幕下半部和右下角，拇指够得着。</li>
+        <li><b>阅读优先</b>——从主页到正文最多两次点击，从书架一次。</li>
+        <li><b>离线不慌</b>——没网时 App 不报错、不白屏，已缓存的内容照常读。</li>
+        <li><b>坏一个不塌全局</b>——在线书源按源隔离，某个源挂了只影响它自己。</li>
+      </ul>
+    </section>
+
+    <!-- 2 -->
+    <section id="s2">
+      <h2><span class="num">02</span>页面地图</h2>
+      <p class="sec-note">底部四个 Tab 是平行的，没有主次。所有二级页面从对应 Tab 里往下钻，返回时回到来的地方，不串页。</p>
+
+      <div class="map">
+        <div class="mcol">
+          <div class="root">TAB 1</div>
+          <div class="tab"><span></span>主页</div>
+          <div class="mitem">接着读（直达阅读器）</div>
+          <div class="mitem">最近添加</div>
+          <div class="mitem">本周阅读统计</div>
+          <div class="mitem acc">设置</div>
+        </div>
+        <div class="mcol">
+          <div class="root">TAB 2</div>
+          <div class="tab"><span></span>书架</div>
+          <div class="mitem">导入本地文件</div>
+          <div class="mitem">筛选 / 排序 / 视图切换</div>
+          <div class="mitem">多选批量操作</div>
+          <div class="mitem acc">分组管理</div>
+        </div>
+        <div class="mcol">
+          <div class="root">TAB 3</div>
+          <div class="tab"><span></span>发现</div>
+          <div class="mitem">切换书源</div>
+          <div class="mitem">榜单 / 分类浏览</div>
+          <div class="mitem">本地导入入口</div>
+          <div class="mitem acc">书源管理</div>
+        </div>
+        <div class="mcol">
+          <div class="root">TAB 4</div>
+          <div class="tab"><span></span>搜索</div>
+          <div class="mitem">搜索历史</div>
+          <div class="mitem">书架内搜索</div>
+          <div class="mitem">在线书源并发搜索</div>
+          <div class="mitem acc">书内全文搜索</div>
+        </div>
+      </div>
+
+      <div class="mchain">
+        <div class="ch-t">三个入口共用的下游链路（书架 / 发现 / 搜索 都能进同一个详情页）</div>
+        <div class="flow">
+          <span class="step">书籍详情</span><span class="arw">→</span>
+          <span class="step">阅读器（小说 / 漫画两套）</span><span class="arw">→</span>
+          <span class="step">目录</span><span class="arw">/</span>
+          <span class="step">排版设置</span><span class="arw">/</span>
+          <span class="step">朗读条</span><span class="arw">/</span>
+          <span class="step">漫画显示设置</span><span class="arw">/</span>
+          <span class="step">书签</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:10px;">
+          细节：本地书从书架进<b>详情页</b>（因为要展示简介、章节），在线书从搜索结果可直接<b>加入书架</b>不跳详情；而「接着读」跳过详情，直接进阅读器。
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="s3">
+      <h2><span class="num">03</span>四个主页面</h2>
+      <p class="sec-note">线框图只表达结构与层级，灰度代表占位，不代表最终配色。每张图下面写了这一页的判断依据。</p>
+
+      <div class="wf-grid2">
+
+        <!-- 主页 -->
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body">
+                <div class="wf-hd">
+                  <div><div class="t0">周六 · 11月21日</div><div class="t1">下午好</div></div>
+                  <div class="icons"><div class="ico"></div><div class="ico"></div></div>
+                </div>
+
+                <div class="wf-lab"><span class="l">接着读</span><span class="r">2 本在读</span></div>
+                <div class="cont">
+                  <div class="cov"></div>
+                  <div class="info">
+                    <div class="bt">夜航船</div>
+                    <div class="bs">第 42 章 · 已读 68%</div>
+                    <div class="bar"><i style="width:68%"></i></div>
+                  </div>
+                  <div class="go">继续</div>
+                </div>
+                <div class="cont">
+                  <div class="cov"></div>
+                  <div class="info">
+                    <div class="bt">海边的卡夫卡（漫画）</div>
+                    <div class="bs">第 12 话 · 已读 21%</div>
+                    <div class="bar"><i style="width:21%"></i></div>
+                  </div>
+                  <div class="go">继续</div>
+                </div>
+
+                <div class="wf-lab"><span class="l">最近添加</span><span class="r">全部 ›</span></div>
+                <div class="row4">
+                  <div class="it"><div class="cov"></div><div class="nm">长夜难明</div></div>
+                  <div class="it"><div class="cov"><span class="bd">新</span></div><div class="nm">孤岛书店</div></div>
+                  <div class="it"><div class="cov"></div><div class="nm">北回归线</div></div>
+                  <div class="it"><div class="cov"></div><div class="nm">雾中列车</div></div>
+                </div>
+
+                <div class="stat">
+                  <div><div class="big">3 小时 12 分</div><div class="sm">本周阅读时长 · 比上周多 40 分钟</div></div>
+                  <div class="cov" style="width:26px;height:34px;flex:0 0 26px;"></div>
+                </div>
+
+                <div class="wf-lab" style="margin-top:12px;"><span class="l">有更新</span><span class="r">2 本</span></div>
+                <div class="upd"><div class="cov"></div><div class="nm">夜航船</div><div class="tg">＋3 章</div></div>
+                <div class="upd"><div class="cov"></div><div class="nm">孤岛书店</div><div class="tg">＋1 章</div></div>
+              </div>
+              <div class="tabbar">
+                <div class="ti on"><i></i>主页</div>
+                <div class="ti"><i></i>书架</div>
+                <div class="ti"><i></i>发现</div>
+                <div class="ti"><i></i>搜索</div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>主页 · 只有一个任务：让你马上接着读</b>
+            首屏不放推荐、不放运营位，第一屏全部给「正在读的书」。右上角两个图标是导入和设置。
+            <span class="anno">设计取舍：不做「今日推荐」轮播——单人自用，算法推荐没有数据支撑，不如把位置留给进度。</span>
+          </figcaption>
+        </figure>
+
+        <!-- 书架 -->
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body">
+                <div class="wf-hd">
+                  <div><div class="t0">共 37 本 · 6 本在读</div><div class="t1">书架</div></div>
+                  <div class="icons"><div class="ico solid"></div><div class="ico"></div><div class="ico"></div></div>
+                </div>
+                <div class="chips">
+                  <span class="pill on">全部</span>
+                  <span class="pill">小说</span>
+                  <span class="pill">漫画</span>
+                  <span class="pill">在追</span>
+                  <span class="pill">看完</span>
+                </div>
+                <div class="grid3">
+                  <div><div class="cov"><span class="bd">3</span></div><div class="nm">夜航船</div><div class="bar"><i style="width:68%"></i></div></div>
+                  <div><div class="cov"></div><div class="nm">长夜难明</div><div class="bar"><i style="width:12%"></i></div></div>
+                  <div><div class="cov"><span class="bd">新</span></div><div class="nm">孤岛书店</div><div class="bar"><i style="width:0%"></i></div></div>
+                  <div><div class="cov"></div><div class="nm">海边的卡夫卡</div><div class="bar"><i style="width:21%"></i></div></div>
+                  <div><div class="cov"></div><div class="nm">北回归线</div><div class="bar"><i style="width:100%"></i></div></div>
+                  <div><div class="cov"></div><div class="nm">雾中列车</div><div class="bar"><i style="width:45%"></i></div></div>
+                  <div><div class="cov"></div><div class="nm">山月记</div><div class="bar"><i style="width:88%"></i></div></div>
+                  <div><div class="cov"></div><div class="nm">雪国</div><div class="bar"><i style="width:5%"></i></div></div>
+                  <div><div class="cov"></div><div class="nm">棋王</div><div class="bar"><i style="width:33%"></i></div></div>
+                </div>
+              </div>
+              <div class="tabbar">
+                <div class="ti"><i></i>主页</div>
+                <div class="ti on"><i></i>书架</div>
+                <div class="ti"><i></i>发现</div>
+                <div class="ti"><i></i>搜索</div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>书架 · 默认封面墙，一屏看全</b>
+            三个图标分别是：导入 ＋、排序、更多（多选 / 分组管理 / 视图切换）。封面右上角的小角标表示「有 3 章更新」或「新导入未读」。
+            <span class="anno">按住封面会弹出快捷面板，不用进详情页就能改分组、标记读完、删除。</span>
+          </figcaption>
+        </figure>
+
+        <!-- 发现 -->
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body">
+                <div class="wf-hd">
+                  <div><div class="t0">当前书源：星空</div><div class="t1">发现</div></div>
+                  <div class="icons"><div class="ico"></div><div class="ico solid"></div></div>
+                </div>
+                <div class="searchbar"><span>⌕</span><span>搜索书名、作者…</span></div>
+                <div class="chips">
+                  <span class="pill on">星空</span>
+                  <span class="pill">笔趣阁</span>
+                  <span class="pill">漫画柜</span>
+                  <span class="pill">＋ 管理</span>
+                </div>
+                <div class="imp">
+                  <div><div class="a">＋ 从文件导入</div><div class="b">txt / epub / pdf / cbz / zip</div></div>
+                  <div style="font-size:14px;color:#BDB5AC;">›</div>
+                </div>
+                <div class="wf-lab"><span class="l">排行榜</span><span class="r">更多 ›</span></div>
+                <div class="seg"><div class="on">周榜</div><div>月榜</div><div>总榜</div><div>新书</div></div>
+                <div class="row4" style="margin-bottom:14px;">
+                  <div class="it"><div class="cov"></div><div class="nm">1. 夜航船</div></div>
+                  <div class="it"><div class="cov"></div><div class="nm">2. 长夜</div></div>
+                  <div class="it"><div class="cov"></div><div class="nm">3. 孤岛</div></div>
+                  <div class="it"><div class="cov"></div><div class="nm">4. 雾中</div></div>
+                </div>
+                <div class="wf-lab"><span class="l">分类</span><span class="r">全部 ›</span></div>
+                <div class="cats">
+                  <div>玄幻</div><div>都市</div><div>悬疑</div><div>历史</div>
+                  <div>科幻</div><div>言情</div><div>武侠</div><div>漫画</div>
+                </div>
+              </div>
+              <div class="tabbar">
+                <div class="ti"><i></i>主页</div>
+                <div class="ti"><i></i>书架</div>
+                <div class="ti on"><i></i>发现</div>
+                <div class="ti"><i></i>搜索</div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>发现 · 逛书的地方，同时是导入入口</b>
+            顶部的「搜索框」其实是个假框，点一下跳到搜索 Tab。「＋ 管理」进书源管理，能导入规则文件、开关源。
+            <span class="anno">为什么导入放这儿：你换新书时不一定在书架，但从「发现」的动线是「找书 → 立刻拿到手」，导入是其中一种拿法。</span>
+          </figcaption>
+        </figure>
+
+        <!-- 搜索 -->
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 16px 12px;">
+                  <div class="searchbar" style="margin:0;flex:1;"><span>⌕</span><span style="color:#37322C;">夜航</span><span style="margin-left:auto;font-size:13px;color:#BDB5AC;">×</span></div>
+                  <div style="font-size:9.5px;color:#5A534C;">取消</div>
+                </div>
+
+                <div class="res-hd"><span class="dot"></span><span>我的书架 · 1 条</span></div>
+                <div class="res">
+                  <div class="cov"></div>
+                  <div class="info"><div class="t">夜航船</div><div class="s">张岱 · 已读 68%</div></div>
+                  <div class="add" style="border:none;color:#8C4229;">在读</div>
+                </div>
+
+                <div class="res-hd"><span class="dot"></span><span>星空书源 · 2 条</span><span style="margin-left:auto;font-size:8px;">0.8s</span></div>
+                <div class="res">
+                  <div class="cov"></div>
+                  <div class="info"><div class="t">夜航船</div><div class="s">张岱 · 共 214 章 · 连载中</div></div>
+                  <div class="add">＋书架</div>
+                </div>
+                <div class="res">
+                  <div class="cov"></div>
+                  <div class="info"><div class="t">夜航</div><div class="s">李某某 · 共 89 章 · 已完结</div></div>
+                  <div class="add">＋书架</div>
+                </div>
+
+                <div class="res-hd"><span class="dot" style="background:#C9A18C;"></span><span>漫画柜 · 加载中</span></div>
+                <div class="skel"><div class="r"></div><div class="r" style="width:78%;"></div></div>
+
+                <div class="res-hd"><span class="dot" style="background:#C9A18C;"></span><span>笔趣阁 · 搜索失败</span></div>
+                <div class="fail"><span>请求超时，其他源不受影响</span><b>重试</b></div>
+              </div>
+              <div class="tabbar">
+                <div class="ti"><i></i>主页</div>
+                <div class="ti"><i></i>书架</div>
+                <div class="ti"><i></i>发现</div>
+                <div class="ti on"><i></i>搜索</div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>搜索 · 一个框，多个源，同时出结果</b>
+            结果按来源分组，每组独立显示状态：成功显示条数、加载中显示骨架、失败只在自己那一栏显示重试。书架结果永远排第一。
+            <span class="anno">关键点：绝不做「等所有源都返回再显示」，那样一个慢源会拖垮整页。</span>
+          </figcaption>
+        </figure>
+
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="s4">
+      <h2><span class="num">04</span>通用二级页面</h2>
+      <p class="sec-note">详情、目录、书源管理——这三页小说和漫画共用。阅读器单独拆成下面两节，因为它俩压根不是同一种东西：一个是文字流，一个是图片流。</p>
+
+      <div class="wf-grid3">
+
+        <!-- 详情 -->
+        <figure>
+          <div class="phone sm">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="body">
+                <div class="rd-top"><span>‹ 返回</span><span class="ct">书籍详情</span><span>⋯</span></div>
+                <div class="dt-hero">
+                  <div class="cov"></div>
+                  <div class="info">
+                    <div class="t">夜航船</div>
+                    <div class="a">张岱 · 星空书源</div>
+                    <div class="tags"><span class="pill">古典</span><span class="pill">笔记</span><span class="pill">连载 214 章</span></div>
+                  </div>
+                </div>
+                <div class="desc">天下学问，惟夜航船中最难对付。盖村夫俗子，其学问皆预先备办……</div>
+                <div class="btns"><div class="b1">继续阅读 · 第42章</div><div class="b2">＋ 书架</div></div>
+                <div class="wf-lab"><span class="l">目录</span><span class="r">共 214 章 ›</span></div>
+                <div class="chp"><span>第 40 章 江南贡院</span><span></span></div>
+                <div class="chp"><span>第 41 章 雨夜</span><span></span></div>
+                <div class="chp on"><span>第 42 章 灯下</span><span>读到这里</span></div>
+                <div class="chp"><span>第 43 章 归舟</span><span>未读</span></div>
+                <div class="chp"><span>第 44 章 旧友</span><span>未读</span></div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>书籍详情</b>
+            主按钮永远是「继续阅读」，而不是「开始阅读」——因为 90% 的情况你不是第一次打开它。已缓存/未缓存状态在这里能看到。
+          </figcaption>
+        </figure>
+
+        <!-- 目录 -->
+        <figure>
+          <div class="phone sm">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="body" style="position:relative;">
+                <div class="txblock" style="position:absolute;inset:0;height:auto;"></div>
+              </div>
+
+              <div class="wdim"></div>
+              <div class="wdrawer">
+                <div class="wdh">
+                  <div class="cov"></div>
+                  <div style="flex:1;min-width:0;">
+                    <div class="t">夜航船（全本未删减 + 番外）</div>
+                    <div class="a">张岱</div>
+                    <div class="a" style="margin-top:1px;">共 569 章</div>
+                  </div>
+                </div>
+                <div class="wdt">
+                  <span class="on">目录</span><span>书签</span><span>笔记</span><span class="sp">重新分章</span>
+                </div>
+                <div class="wds">输入关键字搜索目录</div>
+                <div class="wdl">
+                  <div class="wdr">第 38 章 客舟</div>
+                  <div class="wdr">第 39 章 雪</div>
+                  <div class="wdr">第 40 章 江南贡院</div>
+                  <div class="wdr">第 41 章 雨夜</div>
+                  <div class="wdr on">第 42 章 灯下</div>
+                  <div class="wdr">第 43 章 归舟</div>
+                  <div class="wdr">第 44 章 旧友</div>
+                  <div class="wdr">第 45 章 秦淮</div>
+                  <div class="wdr">第 46 章 别</div>
+                  <div class="wdr">第 47 章 重来</div>
+                  <div class="wdr">第 48 章 旧梦</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>目录 · 左侧抽屉</b>
+            从左边滑出，占屏宽 86%，右边留一条能看见正文的缝。顶部是书封、书名和总章数；中间三个标签切换目录 / 书签 / 笔记；下面是搜索框。
+            <span class="anno">不再是整页，而是盖在正文上的抽屉——关掉它就回到刚才那一页，位置不会丢。当前章用主色标出，打开时自动滚到这一行。</span>
+          </figcaption>
+        </figure>
+
+        <!-- 书源管理 -->
+        <figure>
+          <div class="phone sm">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="body">
+                <div class="rd-top"><span>‹</span><span class="ct">书源管理</span><span>＋</span></div>
+                <div style="padding:10px 16px 12px;font-size:8.5px;color:#9C958D;line-height:1.6;">
+                  书源是「开源阅读」(legado) 格式的规则文件——现成的 JSON 拖进来就能用。一个文件常打包几十个源，导入后展开成列表。
+                </div>
+                <div class="src">
+                  <div class="toggle"></div>
+                  <div class="nm">星空书源</div>
+                  <div class="st">正常 · 小说</div>
+                </div>
+                <div class="src">
+                  <div class="toggle"></div>
+                  <div class="nm">笔趣阁</div>
+                  <div class="st">超时 · 小说</div>
+                </div>
+                <div class="src">
+                  <div class="toggle"></div>
+                  <div class="nm">漫画柜</div>
+                  <div class="st">正常 · 漫画</div>
+                </div>
+                <div class="src">
+                  <div class="toggle off"></div>
+                  <div class="nm">旧源（已停用）</div>
+                  <div class="st">手动关闭</div>
+                </div>
+                <div style="padding:14px 16px;">
+                  <div style="border:1px dashed #C9C2B9;border-radius:9px;padding:11px;text-align:center;font-size:9px;color:#6E6660;">
+                    ＋ 导入规则文件（.json / .txt）
+                  </div>
+                  <div style="font-size:8px;color:#BDB5AC;margin-top:8px;line-height:1.6;">
+                    改版失效的源可以在这里点进去「重新测一下」，不用重新导入。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>书源管理</b>
+            显示每个源的实时状态（正常 / 超时 / 关闭），关掉某个源，它就不再出现在发现和搜索里。
+            <span class="anno">兼容开源阅读（legado）的书源格式，所以规则不用从零写。净化规则也是这个文件里带的——顶栏那个「净化」开关，用的就是源里配好的规则。</span>
+          </figcaption>
+        </figure>
+
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="s5">
+      <h2><span class="num">05</span>阅读器 · 小说</h2>
+      <p class="sec-note">文字流阅读器，全 App 工作量最大的一页。三个状态：干净正文态、菜单态、朗读中。默认是正文态——打开就是字，一条栏都没有。</p>
+
+      <div class="wf-grid2">
+
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body" style="display:flex;flex-direction:column;">
+                <div style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;">
+                  <div class="rd-ch">第 42 章 · 灯下</div>
+                  <div class="txblock"></div>
+                </div>
+                <div style="flex:0 0 24px;text-align:center;font-size:8px;color:#BDB5AC;">12 / 26</div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>① 正文态 · 默认就是这个样子</b>
+            没有状态栏装饰、没有标题栏、没有 Tab。整屏只有章节名和正文，底部一个几乎看不见的页码。点屏幕中央才会把菜单请出来。
+            <span class="anno">为什么这么狠：小说阅读占你 90% 的使用时间，任何常驻控件都是在跟文字抢地方。</span>
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body" style="display:flex;flex-direction:column;">
+                <div class="rd-top"><span>‹</span><span class="ct">夜航船 · 第 42 章</span><span style="display:flex;gap:7px;align-items:center;"><b style="font-size:7.5px;font-weight:700;color:#B85C3E;letter-spacing:.3px;">净化</b><span>⋯</span></span></div>
+                <div style="flex:1;min-height:0;padding:16px 24px 0;display:flex;flex-direction:column;">
+                  <div class="rd-ch">第 42 章 · 灯下</div>
+                  <div class="txblock"></div>
+                </div>
+                <div class="wtts">
+                  <div class="vst">
+                    <div class="vbtnw"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 4h11v17l-5.5-3.7L6.5 21z"/></svg></div>
+                    <div class="vbtnw"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.8"/><path d="M16.2 16.2 20.5 20.5"/></svg></div>
+                    <div class="vbtnw"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg></div>
+                    <div class="vbtnw"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.8" y="4.8" width="16.4" height="14.4" rx="3.6"/><path d="M10.4 9.4l4.6 2.6-4.6 2.6z" fill="#37322C" stroke="none"/></svg></div>
+                    <div class="vbtnw on"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 15.4v-3.9a7.4 7.4 0 0 1 14.8 0v3.9"/><rect x="2.6" y="14.2" width="4.3" height="6.2" rx="2.1"/><rect x="17.1" y="14.2" width="4.3" height="6.2" rx="2.1"/></svg></div>
+                  </div>
+                  <div class="wsl">
+                    <span class="lb">上一章</span>
+                    <div class="wtrack"><i></i><u></u></div>
+                    <span class="lb">下一章</span>
+                  </div>
+                  <div class="wr1" style="margin-bottom:0;">
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg>目录</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3.2v2.2M12 18.6v2.2M3.2 12h2.2M18.6 12h2.2M5.9 5.9l1.6 1.6M16.5 16.5l1.6 1.6M18.1 5.9l-1.6 1.6M7.5 16.5l-1.6 1.6"/></svg>白天</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.8c-4.6 0-8.3 3.6-8.3 8s3.3 7.4 6.9 7.4c.9 0 1.6-.6 1.6-1.4 0-.6-.4-1-.4-1.5 0-.8.7-1.5 1.6-1.5h1.5c2.6 0 4.6-2 4.6-4.6 0-3.6-3.4-6.4-7.5-6.4z"/><circle cx="8.7" cy="10.2" r=".95" fill="#37322C" stroke="none"/><circle cx="12.1" cy="8.1" r=".95" fill="#37322C" stroke="none"/><circle cx="15.4" cy="10.2" r=".95" fill="#37322C" stroke="none"/></svg>主题</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h7M15 7h5M4 17h5M13 17h7"/><path d="M11 4v6M13 14v6"/></svg>设置</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v10.5"/><path d="M8.2 10.2 12 14l3.8-3.8"/><path d="M4.8 15.5v3.2a1.4 1.4 0 0 0 1.4 1.4h11.6a1.4 1.4 0 0 0 1.4-1.4v-3.2"/></svg>缓存</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>② 菜单态 · 点中间呼出</b>
+            上排是「上一章 — 进度滑杆 — 下一章」，滑杆直接拖；翻页不放在面板里，交给左右两侧的点按区。下排五项：目录、白天、主题、设置、缓存。
+            <span class="anno">右侧五个悬浮圆钮不占面板格子：书签、搜索、目录、自动阅读、听书。听书在最下面紧挨面板，点它整个面板换成朗读面板。翻页交给左右两侧 1/3 的点按热区。</span>
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body" style="display:flex;flex-direction:column;">
+                <div class="rd-top"><span>‹</span><span class="ct">夜航船 · 第 42 章</span><span>⋯</span></div>
+                <div style="flex:1;min-height:0;padding:16px 24px 0;display:flex;flex-direction:column;">
+                  <div class="rd-ch">第 42 章 · 灯下</div>
+                  <div class="txblock">
+                    <div class="hlbar" style="top:55px;height:45px;"></div>
+                  </div>
+                </div>
+
+                <div class="wtts">
+                  <div class="grab"></div>
+                  <div class="wr1">
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 5v14"/><path d="M19 5 9 12l10 7z"/></svg>上一章</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>上一页</span>
+                    <span class="mid"><b class="pbw">❙❙</b>播放中</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>下一页</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 5v14"/><path d="M5 5l10 7L5 19z"/></svg>下一章</span>
+                  </div>
+                  <div class="wr2">
+                    <div class="grp">
+                      <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg>目录</span>
+                      <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9M4 16h9"/><circle cx="17" cy="8" r="2.4"/><circle cx="17" cy="16" r="2.4"/></svg>设置</span>
+                    </div>
+                    <div class="exitw">退出</div>
+                    <div class="grp">
+                      <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg>人声</span>
+                      <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#37322C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.2" r="7.8"/><path d="M12 9.2v4.2l2.8 1.8"/><path d="M9 2.6h6"/></svg>定时</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>③ 朗读中 · 双排控制面板</b>
+            上排管"读哪儿"：上一章、上一页、播放/暂停、下一页、下一章。下排管"怎么读"：目录、设置、退出、人声、定时。
+            <span class="anno">面板不遮正文、不加遮罩。点屏幕中间收起，朗读继续；再点一下原样回来。收起的只是面板，不是朗读。</span>
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="phone">
+            <div class="screen">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪ ▮</span></div>
+              <div class="body" style="display:flex;flex-direction:column;">
+                <div class="rd-top"><span>‹</span><span class="ct">夜航船 · 第 42 章</span><span>⋯</span></div>
+                <div style="flex:1;min-height:0;padding:16px 24px 0;display:flex;flex-direction:column;">
+                  <div class="rd-ch">第 42 章 · 灯下</div>
+                  <div class="txblock"></div>
+                </div>
+                <div class="dim"></div>
+                <div class="sheet">
+                  <div class="hnd"></div>
+                  <div class="srow"><span>字号</span><div class="stepper"><span>A−</span><span class="on">18</span><span>A+</span></div></div>
+                  <div class="srow"><span>行距</span><div class="stepper"><span>紧</span><span class="on">中</span><span>松</span></div></div>
+                  <div class="srow"><span>翻页</span><div class="stepper"><span class="on">左右</span><span>上下</span><span>无动画</span></div></div>
+                  <div class="srow"><span>背景</span><div class="swatches"><i style="background:#fff;"></i><i style="background:#F5EFE2;"></i><i style="background:#E8EFE4;"></i><i style="background:#2A2724;"></i></div></div>
+                  <div class="srow"><span>朗读</span><div class="stepper"><span class="on">女声</span><span>男声</span><span>关闭</span></div></div>
+                  <div style="border-top:1px solid #F2EFEB;margin-top:2px;padding-top:9px;font-size:8px;color:#9C958D;">调整即时生效 · 单本书可单独覆盖全局设置</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>④ 排版设置 · 底部抽屉</b>
+            调字号时背后的正文实时变化，不用点确定看效果。第五行是朗读音色，和排版放在一起，因为"边听边读"本来就是同一件事的两半。
+          </figcaption>
+        </figure>
+
+      </div>
+
+      <h3>朗读的六条规则</h3>
+      <table>
+        <thead><tr><th style="width:132px;">场景</th><th>行为</th></tr></thead>
+        <tbody>
+          <tr><td><b>开始朗读</b></td><td>从当前页的第一句开始念，不从头念。你已经看到哪，它就念哪</td></tr>
+          <tr><td><b>跟随高亮</b></td><td>按句切分，念完一句高亮下一句并自动滚动，保证那句始终在屏幕中上部</td></tr>
+          <tr><td><b>暂停 / 继续</b></td><td>暂停时高亮停在原句不动，继续时从那一句的头半句接着念，不跳句</td></tr>
+          <tr><td><b>手动翻页</b></td><td>你手动翻到别处，朗读立刻跟着跳过去，不跟你抢</td></tr>
+          <tr><td><b>章节结束</b></td><td>自动接下一章继续念，中间不弹提示、不需要点确认</td></tr>
+          <tr><td><b>面板收起</b></td><td>点屏幕中间收起面板，朗读不停、高亮继续跟随；再点一下面板原样回来</td></tr>
+          <tr><td><b>锁屏 / 切后台</b></td><td>继续播放，锁屏界面显示书名和播放控制，回来位置不变</td></tr>
+        </tbody>
+      </table>
+
+      <div class="warn">
+        <b>一个必须提前说的取舍：</b>iOS 自带的朗读引擎（AVSpeechSynthesizer）免费、离线、免费用，但中文机械感明显；云端 TTS 自然得多，可是要联网、要钱、还可能把正文发到别人服务器上——对"全本地"的你来说这条不太合适。我默认用系统引擎，做得好不好听，取决于 iOS 的中文音色，这个后面可以先用真机听一耳朵再决定。
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="s6">
+      <h2><span class="num">06</span>阅读器 · 漫画</h2>
+      <p class="sec-note">漫画不是"带图的文字"。它没有文字流可分页，要处理缩放、要处理几万像素的长图、还要考虑日漫的右开翻页。上一版我只画了一个灰框，等于没设计，这一节补全。</p>
+
+      <h3>两种阅读模式</h3>
+      <table>
+        <thead><tr><th style="width:112px;">模式</th><th style="width:34%;">适合什么</th><th>怎么翻</th></tr></thead>
+        <tbody>
+          <tr><td><b>单页</b></td><td>普通页漫，一屏一页</td><td>左右滑或点击两侧翻页，双击放大看细节</td></tr>
+          <tr><td><b>条漫连续</b></td><td>竖屏长图，国漫/韩漫大多数是这种</td><td>上下连续滚动，没有"页"的概念，只有进度</td></tr>
+        </tbody>
+      </table>
+      <p class="glegend" style="margin-top:12px;">默认按书源标记自动选模式，判断错了可以在显示设置里手动锁死——一本书锁死后，下次打开还是这个模式。</p>
+      <p class="glegend">「双页」暂时不做：它必须横屏才成立，而横屏要多做一整套布局。先把竖屏的单页和条漫打磨好，双页留给后面。</p>
+
+      <h3>手势与热区</h3>
+      <div class="gzone">
+        <div><b>左侧 1/3</b><small>点一下 = 上一页<br>右滑 = 上一页</small></div>
+        <div class="core"><b>中间 1/3</b><small>点一下 = 呼出 / 收起<br>菜单栏</small></div>
+        <div><b>右侧 1/3</b><small>点一下 = 下一页<br>左滑 = 下一页</small></div>
+      </div>
+      <p class="glegend">双指缩放 · 放大后单指拖动 · 双击复位 · 从左边缘右滑退出阅读器（任何模式下都成立）</p>
+
+      <div class="wf-grid3">
+
+        <figure>
+          <div class="phone sm">
+            <div class="screen dark">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="comic-full"><div class="pgimg"></div><div class="pgnum">12 / 48</div></div>
+            </div>
+          </div>
+          <figcaption>
+            <b>① 整页态 · 默认</b>
+            图片铺满，除了右下角一个会自动淡出的页码，什么都没有。整屏都是画。
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="phone sm">
+            <div class="screen dark">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="dark-top"><span>‹</span><span class="ct">海边 · 第 12 话</span><span>⋯</span></div>
+              <div class="comic-full"><div class="pgimg"></div><div class="pgnum mid">12 / 48</div></div>
+              <div class="wcpanel">
+                <div class="wcpA"><span class="wcpill">P1</span><span class="wcpn">1 / 4</span></div>
+                <div class="wcpB"><span class="wcbtn">|◀</span><div class="wcsd"><i></i><u></u></div><span class="wcbtn">▶|</span></div>
+                <div class="wcpC"><span>♡<em style="font-style:normal;">收藏</em></span><span>↓<em style="font-style:normal;">下载</em></span><span>☰<em style="font-style:normal;">目录</em></span><span>⏱<em style="font-style:normal;">自动</em></span></div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>② 菜单态</b>
+            顶部是作品名和话数，底部三行：页码与总页数、左右翻页夹一条带刻度的进度条、四个动作（收藏 / 下载 / 目录 / 自动翻页）。底用极浅冷灰，白页浮在上头，页边一条细线。
+            <span class="anno">跟小说阅读器同一套骨架：上排管"读哪儿"，下排管"怎么读"。漫画的"位置"是页，"功能"是收藏下载。右上角进显示设置：单页 / 条漫。</span>
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="phone sm">
+            <div class="screen dark">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="strip">
+                <div class="seg" style="height:132px;"></div>
+                <div class="seg" style="height:158px;"></div>
+                <div class="seg" style="height:126px;"></div>
+                <div class="seg" style="height:148px;"></div>
+                <div class="vprog"><i></i></div>
+                <div class="floatpill">第 12 话 · 已读 38%</div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>③ 条漫态 · 连续滚动</b>
+            长图切成段拼接，滚动连贯不卡顿。右侧细条是整话进度，底部浮一个会淡出的小胶囊告诉你读到哪。
+            <span class="anno">难点在图片高度不固定：要提前算好总高度再拼接，否则滚动条会一直跳。</span>
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="phone sm">
+            <div class="screen dark">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="dark-top"><span>‹</span><span class="ct">海边 · 第 12 话</span><span>⋯</span></div>
+              <div class="comic-full" style="opacity:.45;"><div class="pgimg"></div></div>
+              <div class="sheet dk">
+                <div class="hnd"></div>
+                <div class="srow"><span>阅读模式</span><div class="stepper"><span class="on">单页</span><span>条漫</span></div></div>
+                <div class="srow"><span>翻页方向</span><div class="stepper"><span class="on">右开</span><span>左开</span></div></div>
+                <div class="srow"><span>画面适应</span><div class="stepper"><span class="on">宽</span><span>高</span><span>原图</span></div></div>
+                <div class="srow"><span>背景</span><div class="swatches"><i style="background:#241F1C;"></i><i style="background:#4A443E;"></i><i style="background:#fff;"></i></div></div>
+                <div class="srow"><span>自动翻页</span><div class="stepper"><span class="on">关</span><span>5 秒</span><span>10 秒</span></div></div>
+                <div style="border-top:1px solid rgba(255,255,255,.1);margin-top:2px;padding-top:9px;font-size:8px;color:rgba(255,255,255,.4);">模式跟随本书保存 · 换书不互相影响</div>
+              </div>
+            </div>
+          </div>
+          <figcaption>
+            <b>④ 显示设置</b>
+            五个开关解决"看着别扭"的所有情况：模式不对、翻页方向反了、图被裁了、背景刺眼、想让它自己翻。
+            <span class="anno">"右开 / 左开"是日漫和国漫的分水岭，选错了整本书的阅读顺序都是反的。</span>
+          </figcaption>
+        </figure>
+
+        <figure>
+          <div class="phone sm">
+            <div class="screen dark">
+              <div class="sb"><span>9:41</span><span class="r">▪▪▪</span></div>
+              <div class="dark-top"><span>×</span><span class="ct">话目录 · 共 48 话</span><span>⇅</span></div>
+              <div class="chips">
+                <span class="pill on">正序</span><span class="pill">倒序</span><span class="pill">只看未读</span>
+              </div>
+              <div class="dchp"><span>第 9 话 夜航</span><span>已缓存</span></div>
+              <div class="dchp"><span>第 10 话 礁石</span><span>已缓存</span></div>
+              <div class="dchp"><span>第 11 话 潮声</span><span>已缓存</span></div>
+              <div class="dchp on"><span>第 12 话 归船</span><span>在读</span></div>
+              <div class="dchp"><span>第 13 话 雾</span><span>未读</span></div>
+              <div class="dchp"><span>第 14 话 断桅</span><span>未读</span></div>
+              <div class="dchp"><span>第 15 话 灯</span><span>未读</span></div>
+              <div class="dchp"><span>第 16 话 归</span><span>未读</span></div>
+            </div>
+          </div>
+          <figcaption>
+            <b>⑤ 话目录</b>
+            和小说目录同构，但单位是"话"，右侧多一列缓存状态。打开时自动定位到当前话，正在读的那话高亮。
+          </figcaption>
+        </figure>
+
+      </div>
+
+      <div class="warn">
+        <b>漫画这边最容易做砸的三件事，先说在前面：</b>一是长图拼接——高度算错就会滚到一半乱跳；二是翻页方向——日漫右开、国漫左开，搞反了整本书都得倒着看；三是缓存——一话几十张图，不预加载就会翻一页等一下，这个体验比小说差得远。这三块的工作量，比画这几个界面大得多。
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="s7">
+      <h2><span class="num">07</span>关键流程</h2>
+      <p class="sec-note">四条最常走的路径，我按「点几下、中间会不会卡」的标准压缩过。橙色的是需要额外操作的节点。</p>
+
+      <div class="flowbox">
+        <div class="ft">A · 导入一本本地小说 <em>3 步，不需要网络</em></div>
+        <div class="flow">
+          <span class="step">书架右上 ＋</span><span class="arw">→</span>
+          <span class="step">系统文件选择器<small>可多选</small></span><span class="arw">→</span>
+          <span class="step hi">解析中<small>显示书名与进度</small></span><span class="arw">→</span>
+          <span class="step">完成提示<small>成功 N 本 / 失败 M 本</small></span><span class="arw">→</span>
+          <span class="step">回到书架并高亮新书</span>
+        </div>
+      </div>
+
+      <div class="flowbox">
+        <div class="ft">B · 在线找一本书并开始读 <em>从发现页算起 4 步</em></div>
+        <div class="flow">
+          <span class="step">发现 · 选源</span><span class="arw">→</span>
+          <span class="step">榜单 / 分类</span><span class="arw">→</span>
+          <span class="step">书籍详情</span><span class="arw">→</span>
+          <span class="step hi">＋ 加入书架<small>默认进「在追」</small></span><span class="arw">→</span>
+          <span class="step">继续阅读</span>
+        </div>
+      </div>
+
+      <div class="flowbox">
+        <div class="ft">C · 接着读 <em>App 打开后 1 步到正文</em></div>
+        <div class="flow">
+          <span class="step">打开 App</span><span class="arw">→</span>
+          <span class="step hi">主页 · 接着读卡片</span><span class="arw">→</span>
+          <span class="step">阅读器（直达上次位置）</span>
+        </div>
+      </div>
+
+      <div class="flowbox">
+        <div class="ft">D · 搜一个词，看它在哪 <em>一个框出三类结果</em></div>
+        <div class="flow">
+          <span class="step">点搜索框</span><span class="arw">→</span>
+          <span class="step">输入（停 0.3 秒自动搜）</span><span class="arw">→</span>
+          <span class="step">书架命中 / 各源命中 并行返回</span><span class="arw">→</span>
+          <span class="step hi">＋书架 或 直接打开</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:11px;">
+          另外有一个入口：在阅读器里长按选中文字，菜单里有「全书搜索这个词」，结果是一个带上下文摘录的列表，点一条直接跳到那一页。
+        </div>
+      </div>
+
+      <div class="flowbox">
+        <div class="ft">E · 边听边读 <em>开朗读 1 步，之后不用管</em></div>
+        <div class="flow">
+          <span class="step">阅读器菜单</span><span class="arw">→</span>
+          <span class="step hi">点 ♪</span><span class="arw">→</span>
+          <span class="step">当前页第一句开始念 + 高亮跟随</span><span class="arw">→</span>
+          <span class="step">章末自动接下一章</span><span class="arw">→</span>
+          <span class="step">锁屏后仍在播</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:11px;">
+          你在听的过程中随手翻页，朗读跟着跳；不想听了点暂停，高亮停在那一句，下次继续从那半句接着念。
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="s8">
+      <h2><span class="num">08</span>交互规则</h2>
+      <p class="sec-note">这些是容易在实现时走偏的地方，先定死。</p>
+      <table>
+        <thead>
+          <tr><th style="width:130px;">位置</th><th style="width:180px;">操作</th><th>结果</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>书架封面</b></td><td>单击</td><td>进书籍详情（不是直接读）——因为详情页才有简介和目录</td></tr>
+          <tr><td></td><td>长按</td><td>弹出快捷面板：改分组、标记已读完、导出、删除。面板从底部升起，不遮挡封面</td></tr>
+          <tr><td></td><td>右上角编辑</td><td>进多选模式，可批量删除 / 批量分组。左上角出现「全选」，底部出现操作条</td></tr>
+          <tr><td><b>阅读器（小说）</b></td><td>点左 1/3</td><td>上一页；到本章第一页时提示「已是本章开头，上一章？」</td></tr>
+          <tr><td></td><td>点右 1/3</td><td>下一页；到本章最后一页后自动进下一章</td></tr>
+          <tr><td></td><td>点中间 1/3</td><td>切换控制层：普通阅读时是上下菜单栏，朗读中是朗读面板。正文不位移</td></tr>
+          <tr><td></td><td>左边缘右滑</td><td>退出阅读器回书架，进度已保存，无确认弹窗</td></tr>
+          <tr><td></td><td>点右侧目录钮</td><td>从左侧滑出目录抽屉（占屏宽 86%），右边留一条缝能看见正文；点遮罩或右滑关掉，回到原页</td></tr>
+          <tr><td></td><td>点右侧耳机钮</td><td>进入听书：菜单面板换成朗读面板，正文位置不动；语速音色沿用上次</td></tr>
+          <tr><td></td><td>点顶栏「净化」</td><td>开关当前书的正文净化，开启时文字变主色。规则跟着书源走，在书源管理里能看到命中的条目</td></tr>
+          <tr><td></td><td>点「退出」</td><td>结束朗读，控制层从朗读面板切回普通菜单，正文留在当前位置</td></tr>
+          <tr><td></td><td>朗读时手动翻页</td><td>朗读立刻跟着跳到你翻到的那页，不跟你抢位置</td></tr>
+          <tr><td><b>阅读器（漫画）</b></td><td>点左 / 右 1/3</td><td>上一页 / 下一页；到话尾自动进下一话，不停顿不确认</td></tr>
+          <tr><td></td><td>左右滑</td><td>翻页。翻页方向按「右开 / 左开」设置走，方向反了整本书都是倒着看</td></tr>
+          <tr><td></td><td>双击</td><td>在「适应整屏」和「放大 2 倍」之间切换，放大后双击回到整屏</td></tr>
+          <tr><td></td><td>双指缩放</td><td>放大后单指拖动看图；拖到画面边缘继续滑才翻页，避免看图时误翻</td></tr>
+          <tr><td></td><td>条漫连续模式</td><td>滑到倒数第 3 屏时预加载下一话，滚到底自动接上，不出现空白等待</td></tr>
+          <tr><td><b>搜索</b></td><td>输入</td><td>停 0.3 秒后并发请求；继续输入则取消上一次请求</td></tr>
+          <tr><td></td><td>单个源失败</td><td>只在该分组内显示重试，其他结果照常展示，不弹全局错误</td></tr>
+          <tr><td><b>在线书籍</b></td><td>打开未缓存章节</td><td>边下边读，正文先到先显示，不等整章下完</td></tr>
+          <tr><td></td><td>离线时打开未缓存书</td><td>明确提示「这一章还没缓存」，并列出已缓存的章节可跳到那里</td></tr>
+          <tr><td><b>删除书</b></td><td>删除</td><td>默认只删书架记录、保留缓存文件；第二次确认时才有「同时删除文件」开关</td></tr>
+          <tr><td><b>全局</b></td><td>返回</td><td>每个 Tab 各自记住自己的滚动位置，切回来不回到顶部</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 7 -->
+    <section id="s9">
+      <h2><span class="num">09</span>状态清单</h2>
+      <p class="sec-note">一个页面要设计四种样子：正常、空、加载、出错。这里把每个页面的另外三种先定下来，避免做到一半发现「空了显示什么」没想清楚。</p>
+      <table>
+        <thead>
+          <tr><th style="width:96px;">页面</th><th style="width:34%;">空 / 首次</th><th style="width:23%;">加载</th><th>出错</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>主页</b></td>
+            <td>一本书都没有：一句「书架还是空的」，两个按钮——「导入本地文件」「去发现找书」</td>
+            <td>本地数据读得快，不显示骨架；封面逐步浮现</td>
+            <td>封面文件损坏 → 显示默认占位图 + 书名文字，不显示破图</td>
+          </tr>
+          <tr>
+            <td><b>书架</b></td>
+            <td>同上；筛选后为空 → 「这个分组下还没有书」+ 一个「清除筛选」</td>
+            <td>首次启动若书多，先出占位格子再填封面</td>
+            <td>某本书解析失败 → 卡片标灰显示「无法打开」，点击给原因</td>
+          </tr>
+          <tr>
+            <td><b>发现</b></td>
+            <td>还没导入任何书源 → 整页替换成一个引导块：「导入第一份书源规则」，不显示空的榜单框架</td>
+            <td>榜单区域骨架屏，分类立刻可点</td>
+            <td>当前源挂了 → 顶部一条横条「星空书源暂时不可用，换个源」，不挡住下面的分类</td>
+          </tr>
+          <tr>
+            <td><b>搜索</b></td>
+            <td>没输入：显示搜索历史 + 最近读的三本书；历史为空则显示「搜书名、作者，或书里的任何一句话」</td>
+            <td>每个源独立骨架，书架结果先出</td>
+            <td>全部源都失败 → 一句「所有书源都没响应」，附「检查网络」「换个源」两个动作</td>
+          </tr>
+          <tr>
+            <td><b>阅读器</b></td>
+            <td>空章节（源站还没更新）→ 留在当前章末，提示「本章后暂无内容」</td>
+            <td>在线章节：先显示已取到的部分，底部一条细进度</td>
+            <td>章节取不到 → 保留当前页不动，弹一条可关闭的提示，不跳走、不白屏</td>
+          </tr>
+          <tr>
+            <td><b>朗读</b></td>
+            <td>从没点过 ♪ → 第一次点就从当前页第一句开始，不需要选章节、不需要从头</td>
+            <td>切音色 / 首次合成有零点几秒延迟，播放键转圈，正文照常可看</td>
+            <td>系统没装中文语音包 → 明确提示「去系统设置下载中文语音」，不静默失败</td>
+          </tr>
+          <tr>
+            <td><b>阅读器（漫画）</b></td>
+            <td>整话图片全挂 → 「本话加载失败」，两个动作：重试、换源</td>
+            <td>先出模糊占位图再逐张替换，不整屏空白；滚动时提前加载后面几屏</td>
+            <td>单张图失败 → 原位留占位并自动重试 2 次，不打断阅读；连续失败才弹提示</td>
+          </tr>
+          <tr>
+            <td><b>导入</b></td>
+            <td>—</td>
+            <td>逐个文件显示进度，可取消</td>
+            <td>格式不支持 / 文件加密 → 列在结果页，写清哪个文件、为什么失败</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 8 -->
+    <section id="s10">
+      <h2><span class="num">10</span>决定清单</h2>
+      <p class="sec-note">悬着的四件事全部落地了，现在没有待确认项。下面是全部结论，做的时候照着走。</p>
+
+      <div class="dec">
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>书架默认封面墙 3 列</b>，可切列表视图。单一本书的信息量（封面 + 进度）比书名更重要。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>小说默认左右翻页</b>，漫画默认整页翻页；条漫源自动切上下滚动。三种都能在设置里改。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>「接着读」跳过详情页</b>，直接进上次位置。详情页只在你想看简介或换章时才进。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>分组预设「在追 / 看完 / 弃了」</b>，可自建分组。在线新书默认进「在追」。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>删除书默认只删记录</b>，保留缓存文件；要删文件得二次确认。防止手滑丢书。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>备份做成一个文件</b>（.zip），含书架清单、进度、书签、书源配置；缓存文件可选是否包含。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>朗读进 V1</b>：小说阅读器内置系统 TTS，逐句高亮跟随，章末自动接下一章，锁屏可控。上一版我把它砍掉了，是错的。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>漫画阅读器单独设计</b>，两种模式（单页 / 条漫），模式按书保存，换书不互相影响。<b>不做横屏双页</b>——它必须横屏才成立，留着以后再说。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>书源用「开源阅读」(legado) 的格式</b>。不做规则编辑器，也不做「贴网址自动生成」——社区里现成的 JSON 直接导入，一个文件常常打包几十个源，坏的单独关掉。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>阅读统计要做</b>。主页那张「本周时长」卡片保留，点开是一个轻量统计页：本周 / 本月时长、读完几本、日均多久。不单开 Tab。</div></div>
+        <div class="row"><div class="tag ok">已定</div><div class="c"><b>朗读音色用本地系统语音</b>。不联网、不花钱、正文不出手机。代价是中文音色偏机械，先把功能跑通，音质以后再说。</div></div>
+      </div>
+
+      <h3>书源这条连带出来的三件事</h3>
+      <p style="font-size:13px;color:var(--ink2);max-width:720px;">
+        用 legado 的格式，省掉了自己发明一套规则语法的工作，但有三处要跟着改：<b>①</b> 书源管理要能拆包——一个 JSON 导入后展开成几十个源，逐个开关；<b>②</b> 净化规则是书源自带的，顶栏那个「净化」开关才有真实内容，不是摆设；<b>③</b> 书源改版失效是常态，所以每个源要有「测一下」按钮，坏了自己关掉，不影响其他源。
+      </p>
+
+      <div class="warn">
+        <b>这张图之外的边界，我这一版故意没碰：</b>分享扩展（从 Safari / 文件 App 直接分享进本 App）、iPad 布局、iCloud 同步、云端 TTS、漫画横屏双页、漫画润色特效（自动分格、跨页拼接矫正）。
+        <br><br>另外要更正一句：上一版我把「听书」列进了不做清单，这是我没问清你的阅读习惯就下的判断。现在朗读已经回到 V1，并且是核心功能，不是附加项。
+      </div>
+    </section>
+
+    <div style="border-top:1px solid var(--line);padding-top:18px;font-size:11.5px;color:var(--muted);">
+      确认这份结构后，下一步是：把线框做成可点击的高保真原型（iOS 上直接试手感），再定视觉，最后才写代码。
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

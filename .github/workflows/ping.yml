@@ -1,0 +1,23 @@
+name: Ping
+
+# 自检：确认 runner 能不能正常分配。不依赖任何项目代码。
+on:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: ubuntu 可用性
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "ubuntu ok"
+
+  macos:
+    name: macos 可用性
+    runs-on: macos-latest
+    timeout-minutes: 8
+    steps:
+      - run: |
+          echo "macos ok"
+          sw_vers
+          xcodebuild -version

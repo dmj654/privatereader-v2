@@ -1,0 +1,12 @@
+.DS_Store
+.workbuddy/
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace/
+xcuserdata/
+*.ipa
+dist/
+*.xcarchive
+PkgInfo
