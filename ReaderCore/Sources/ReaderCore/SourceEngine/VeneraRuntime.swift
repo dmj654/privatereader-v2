@@ -376,7 +376,7 @@ private final class VeneraJSBridge {
                 let object = try Self.handle(message: message,
                                              context: context,
                                              source: source,
-                                             store: store)
+                                             store: self.store)
                 return JSValue(object: object, in: context) ?? JSValue(nullIn: context)
             } catch {
                 return JSValue(object: ["error": error.localizedDescription], in: context)
@@ -622,7 +622,7 @@ private final class VeneraJSBridge {
             return elements.map { store.id(for: $0) }
         case "getElementById":
             guard let document = store.documents[key],
-                  let element = document.getElementById(dict["id"] as? String ?? "") else { return nil }
+                  let element = try document.getElementById(dict["id"] as? String ?? "") else { return nil }
             return store.id(for: element)
         case "dom_querySelector":
             guard let element = store.elements[key],
@@ -635,9 +635,10 @@ private final class VeneraJSBridge {
             guard let element = store.elements[key] else { return "" }
             return try element.text()
         case "getAttributes":
-            guard let element = store.elements[key] else { return [:] }
+            guard let element = store.elements[key],
+                  let attributes = element.getAttributes() else { return [:] }
             var result: [String: String] = [:]
-            for attribute in element.attributes() {
+            for attribute in attributes.asList() {
                 result[attribute.getKey()] = attribute.getValue()
             }
             return result
@@ -656,7 +657,7 @@ private final class VeneraJSBridge {
             return store.id(for: parent)
         case "getClassNames":
             guard let element = store.elements[key] else { return [] }
-            return Array(element.classNames())
+            return Array(try element.classNames())
         case "getId":
             guard let element = store.elements[key] else { return nil }
             let id = try element.id()
@@ -672,7 +673,13 @@ private final class VeneraJSBridge {
                   let sibling = try element.nextElementSibling() else { return nil }
             return store.id(for: sibling)
         case "node_text":
-            return store.nodes[key]?.toString() ?? ""
+            if let textNode = store.nodes[key] as? TextNode {
+                return textNode.text()
+            }
+            if let element = store.nodes[key] as? Element {
+                return (try? element.text()) ?? ""
+            }
+            return ""
         case "node_type":
             guard let node = store.nodes[key] else { return "unknown" }
             let name = node.nodeName()
