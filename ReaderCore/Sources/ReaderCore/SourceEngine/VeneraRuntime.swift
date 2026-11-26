@@ -296,6 +296,9 @@ public final class VeneraRuntime: @unchecked Sendable {
             const saved = original.call(this, key);
             if (saved !== null && saved !== undefined) return saved;
             const item = this.settings && this.settings[key];
+            if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+                return item;
+            }
             return item ? item.default : undefined;
         };
     })();

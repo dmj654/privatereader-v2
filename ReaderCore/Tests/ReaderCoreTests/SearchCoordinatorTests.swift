@@ -67,7 +67,7 @@ final class SearchCoordinatorTests: XCTestCase {
 
     func testEmptySourceListFinishesImmediately() async {
         var results: [SourceSearchResult] = []
-        let stream = await makeCoordinator().search(sources: [], key: "x")
+        let stream = await makeCoordinator().search(sources: [] as [LegadoSource], key: "x")
         for await result in stream { results.append(result) }
         XCTAssertTrue(results.isEmpty)
     }
