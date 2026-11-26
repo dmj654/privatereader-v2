@@ -83,7 +83,7 @@ public final class VeneraRuntime: @unchecked Sendable {
                        comicId: String,
                        timeout: TimeInterval = 40) async throws -> VeneraDetail {
         let result = try await perform(source: source, timeout: timeout, call: """
-        (async () => {
+        await (async () => {
             const d = await __source.comic.loadInfo(\(jsLiteral(comicId)));
             if (d && d.chapters && !Array.isArray(d.chapters)) {
                 d.chapters = d.chapters instanceof Map
