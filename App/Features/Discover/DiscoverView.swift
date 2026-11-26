@@ -319,7 +319,7 @@ struct DiscoverView: View {
                     group.addTask { (source.id, await status(for: source)) }
                 }
 
-                while let (id, status) = await group.next() {
+                while let (id, health) = await group.next() {
                     if Task.isCancelled {
                         group.cancelAll()
                         break
@@ -328,7 +328,7 @@ struct DiscoverView: View {
                         try? repo.markChecked(
                             id: id,
                             at: Int(Date().timeIntervalSince1970),
-                            result: Self.checkResultText(status)
+                            result: Self.checkResultText(health)
                         )
                         checkedCount += 1
                     }
