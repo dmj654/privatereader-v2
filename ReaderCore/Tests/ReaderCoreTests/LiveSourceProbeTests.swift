@@ -139,4 +139,41 @@ final class LiveSourceProbeTests: XCTestCase {
         XCTAssertFalse(pages.isEmpty, "CopyManga 章节图片为空")
         print("[LIVE] CopyManga 图片：\(pages.count) 张")
     }
+
+    /// 不是只验证 CopyManga 一条：把索引里所有 Venera 源都跑一次真实搜索，
+    /// 明确统计哪些能用、哪些因为源自身 API 限制失败。
+    func testAllVeneraSourcesSmokeSearch() async throws {
+        try requireLive()
+        let indexURL = try XCTUnwrap(URL(string: "https://git.nyne.dev/nyne/venera-configs/raw/branch/main/index.json"))
+        let (indexData, _) = try await URLSession.shared.data(from: indexURL)
+        let database = try AppDatabase.inMemory()
+        let repo = SourceRepository(db: database.writer)
+        _ = try await VeneraImportService(repo: repo)
+            .importIndex(indexData, indexURL: indexURL, category: .comic)
+        let targets = try SourceImportService(repo: repo).enabledTargets()
+            .filter(\.isComic)
+        print("[LIVE][ALL] 共 \(targets.count) 个 Venera 源")
+
+        var ok = 0
+        var failed: [String] = []
+        for target in targets {
+            guard case .venera(let source) = target else { continue }
+            do {
+                let books = try await VeneraRuntime().search(source: source, keyword: "海贼", timeout: 12)
+                if books.isEmpty {
+                    failed.append("\(source.name): 0 条")
+                    print("[LIVE][ALL][EMPTY] \(source.name)")
+                } else {
+                    ok += 1
+                    print("[LIVE][ALL][OK] \(source.name): \(books.count) 条")
+                }
+            } catch {
+                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                failed.append("\(source.name): \(message)")
+                print("[LIVE][ALL][FAIL] \(source.name): \(message)")
+            }
+        }
+        print("[LIVE][ALL] 成功 \(ok) / \(targets.count)，失败 \(failed.count)")
+        XCTAssertGreaterThan(ok, 0, "没有一个 Venera 源能搜索")
+    }
 }
