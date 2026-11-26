@@ -1,0 +1,128 @@
+[
+  {
+    "bookSourceName": "00小说网",
+    "bookSourceUrl": "https://www.00shuge.com",
+    "bookSourceGroup": "已验证·小说",
+    "bookSourceType": 0,
+    "bookSourceComment": "2026-11-26 实测：搜索《斗破苍穹》→详情→1651 章目录→正文均返回 200。正文开头偶有“最新网址”提示，已用净化规则去掉提示文字。",
+    "enabled": true,
+    "enabledExplore": false,
+    "searchUrl": "https://www.00shuge.com/modules/article/search.php?q={{key}}",
+    "ruleSearch": {
+      "bookList": "class.grid@tag.tr",
+      "name": "tag.td.0@tag.a@text",
+      "author": "tag.td.2@text",
+      "kind": "tag.td.5@text",
+      "wordCount": "tag.td.3@text",
+      "lastChapter": "tag.td.1@tag.a@text",
+      "intro": "",
+      "coverUrl": "",
+      "bookUrl": "tag.td.0@tag.a@href"
+    },
+    "ruleBookInfo": {
+      "name": "id.info@tag.h1.0@text",
+      "author": "id.info@tag.p.0@text##作\\s*者：",
+      "kind": "",
+      "wordCount": "",
+      "lastChapter": "",
+      "intro": "id.intro@text",
+      "coverUrl": "",
+      "tocUrl": ""
+    },
+    "ruleToc": {
+      "chapterList": "id.list@tag.dd",
+      "chapterName": "tag.a@text",
+      "chapterUrl": "tag.a@href",
+      "updateTime": "",
+      "nextTocUrl": ""
+    },
+    "ruleContent": {
+      "content": "id.content@html##最新网址：[^\\n]*",
+      "nextContentUrl": ""
+    }
+  },
+  {
+    "bookSourceName": "天域小说网",
+    "bookSourceUrl": "http://www.tycqzw.info",
+    "bookSourceGroup": "已验证·小说",
+    "bookSourceType": 0,
+    "bookSourceComment": "2026-11-26 实测：搜索《斗破苍穹》→详情→1923 章目录→正文均返回 200。注意是 http 站点，不是 https。",
+    "enabled": true,
+    "enabledExplore": false,
+    "searchUrl": "http://www.tycqzw.info/search.php?searchkey={{key}}",
+    "ruleSearch": {
+      "bookList": "class.grid@tag.tr",
+      "name": "class.even.0@tag.a.0@text",
+      "author": "class.even.1@text",
+      "kind": "",
+      "wordCount": "",
+      "lastChapter": "class.odd.0@tag.a.0@text",
+      "intro": "",
+      "coverUrl": "",
+      "bookUrl": "class.even.0@tag.a.0@href"
+    },
+    "ruleBookInfo": {
+      "name": "id.info@tag.h1.0@text",
+      "author": "id.info@tag.p.0@text##作\\s*者：",
+      "kind": "",
+      "wordCount": "",
+      "lastChapter": "",
+      "intro": "id.intro@text",
+      "coverUrl": "",
+      "tocUrl": ""
+    },
+    "ruleToc": {
+      "chapterList": "id.list@tag.dd",
+      "chapterName": "tag.a@text",
+      "chapterUrl": "tag.a@href",
+      "updateTime": "",
+      "nextTocUrl": ""
+    },
+    "ruleContent": {
+      "content": "id.content@html",
+      "nextContentUrl": ""
+    }
+  },
+  {
+    "bookSourceName": "笔趣阁 bqg9",
+    "bookSourceUrl": "https://www.bqg9.xyz",
+    "bookSourceGroup": "已验证·小说",
+    "bookSourceType": 0,
+    "bookSourceComment": "2026-11-26 实测：搜索《斗破苍穹》→详情→1685 章目录→正文均返回 200。页面是 GBK 编码，App 已按页面 charset 解码。",
+    "enabled": true,
+    "enabledExplore": false,
+    "searchUrl": "https://www.bqg9.xyz/modules/article/search.php?searchkey={{key}}",
+    "ruleSearch": {
+      "bookList": "class.grid@tag.tr",
+      "name": "tag.td.0@tag.a@text",
+      "author": "tag.td.2@text",
+      "kind": "tag.td.5@text",
+      "wordCount": "tag.td.3@text",
+      "lastChapter": "tag.td.1@tag.a@text",
+      "intro": "",
+      "coverUrl": "",
+      "bookUrl": "tag.td.0@tag.a@href"
+    },
+    "ruleBookInfo": {
+      "name": "id.info@tag.h1.0@text",
+      "author": "id.info@tag.p.0@text##作\\s*者：",
+      "kind": "",
+      "wordCount": "",
+      "lastChapter": "",
+      "intro": "id.intro@text",
+      "coverUrl": "",
+      "tocUrl": ""
+    },
+    "ruleToc": {
+      "chapterList": "id.list@tag.dd",
+      "chapterName": "tag.a@text",
+      "chapterUrl": "tag.a@href",
+      "updateTime": "",
+      "nextTocUrl": ""
+    },
+    "ruleContent": {
+      "content": "id.content@html",
+      "nextContentUrl": ""
+    }
+  }
+]
