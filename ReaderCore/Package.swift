@@ -22,6 +22,10 @@ let package = Package(
             ],
             resources: [.process("Resources")]
         ),
-        .testTarget(name: "ReaderCoreTests", dependencies: ["ReaderCore"])
+        .testTarget(
+            name: "ReaderCoreTests",
+            dependencies: ["ReaderCore"],
+            resources: [.process("Fixtures")]
+        )
     ]
 )

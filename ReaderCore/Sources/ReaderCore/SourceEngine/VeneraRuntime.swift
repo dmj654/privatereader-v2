@@ -353,7 +353,7 @@ public final class VeneraRuntime: @unchecked Sendable {
 private final class VeneraJSBridge {
     let context: JSContext
     let source: VeneraSource
-    private let store = VeneraHTMLStore()
+    private let store: VeneraHTMLStore
     private let session: URLSession
 
     let sendBlock: @convention(block) (JSValue) -> JSValue
@@ -369,6 +369,8 @@ private final class VeneraJSBridge {
         config.httpShouldSetCookies = true
         config.httpCookieAcceptPolicy = .always
         self.session = URLSession(configuration: config)
+        let store = VeneraHTMLStore()
+        self.store = store
 
         self.sendBlock = { [weak context] message in
             guard let context else { return JSValue(undefinedIn: nil) }
@@ -376,7 +378,7 @@ private final class VeneraJSBridge {
                 let object = try Self.handle(message: message,
                                              context: context,
                                              source: source,
-                                             store: self.store)
+                                             store: store)
                 return JSValue(object: object, in: context) ?? JSValue(nullIn: context)
             } catch {
                 return JSValue(object: ["error": error.localizedDescription], in: context)
