@@ -163,19 +163,33 @@ final class StaticURLProtocol: URLProtocol {
 }
 
 final class SlowURLProtocol: URLProtocol {
+    private let lock = NSLock()
+    private var stopped = false
+
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        Thread.sleep(forTimeInterval: 1.0)
-        guard let url = request.url,
-              let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil) else {
-            return
+        // 不阻塞 URLSession 的线程；1 秒后再回包，这样第一轮超时取消后，
+        // 第二轮还能正常拿到响应，测试的是「重试」而不是线程被卡住。
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            let stopped = self.stopped
+            self.lock.unlock()
+            guard !stopped, let url = self.request.url,
+                  let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil) else {
+                return
+            }
+            self.client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            self.client?.urlProtocol(self, didLoad: Data("<html></html>".utf8))
+            self.client?.urlProtocolDidFinishLoading(self)
         }
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data("<html></html>".utf8))
-        client?.urlProtocolDidFinishLoading(self)
     }
 
-    override func stopLoading() {}
+    override func stopLoading() {
+        lock.lock()
+        stopped = true
+        lock.unlock()
+    }
 }
