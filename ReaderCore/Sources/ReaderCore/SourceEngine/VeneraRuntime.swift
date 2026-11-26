@@ -96,7 +96,9 @@ public final class VeneraRuntime: @unchecked Sendable {
             throw VeneraEngineError.emptyResult("漫画详情")
         }
         let title = string(object["title"])
-        guard !title.isEmpty else { throw VeneraEngineError.emptyResult("漫画标题") }
+        guard !title.isEmpty else {
+            throw VeneraEngineError.emptyResult("漫画标题（返回字段：\(object.keys.sorted().joined(separator: ","))）")
+        }
 
         let tagObject = object["tags"] as? [String: Any] ?? [:]
         let author = firstTag(tagObject, names: ["作者", "author", "Author"])

@@ -34,24 +34,51 @@ final class LiveSourceProbeTests: XCTestCase {
         XCTAssertEqual(targets.count, 3)
 
         let client = SourceClient()
+        var failures: [String] = []
         for target in targets {
             guard case .legado(let source) = target else {
                 XCTFail("\(target.name) 不是 legado 源"); continue
             }
 
-            let books = try await client.search(source: source, key: "斗破苍穹")
-            XCTAssertFalse(books.isEmpty, "\(source.name) 搜索「斗破苍穹」返回 0 条")
+            do {
+                let books = try await client.search(source: source, key: "斗破苍穹")
+                XCTAssertFalse(books.isEmpty, "\(source.name) 搜索「斗破苍穹」返回 0 条")
 
-            guard let first = books.first else { continue }
-            let detail = try await client.bookInfo(source: source, book: first)
-            let chapters = try await client.chapters(source: source, book: detail)
-            XCTAssertFalse(chapters.isEmpty, "\(source.name) 目录为空")
+                guard let first = books.first else { continue }
+                let detail = try await client.bookInfo(source: source, book: first)
+                let chapters = try await client.chapters(source: source, book: detail)
+                XCTAssertFalse(chapters.isEmpty, "\(source.name) 目录为空")
 
-            guard let chapter = chapters.first else { continue }
-            let content = try await client.content(source: source, chapter: chapter)
-            XCTAssertFalse(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                           "\(source.name) 正文为空")
-            print("[LIVE] \(source.name): \(books.count) 本 / \(chapters.count) 章 / \(content.count) 字")
+                guard let chapter = chapters.first else { continue }
+                let content = try await client.content(source: source, chapter: chapter)
+                XCTAssertFalse(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                               "\(source.name) 正文为空")
+                print("[LIVE] \(source.name): \(books.count) 本 / \(chapters.count) 章 / \(content.count) 字")
+            } catch {
+                failures.append("\(source.name): \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)")
+                print("[LIVE][FAIL] \(source.name): \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)")
+            }
+        }
+        XCTAssertTrue(failures.isEmpty, "有源失败：\(failures.joined(separator: "；"))")
+    }
+
+    /// 绕开 App 网络层，直接抓 HTML + 直接跑 RuleRunner，确认 SwiftSoup 解析没问题。
+    func testNovelRulesParseRealHTML() async throws {
+        try requireLive()
+        let cases: [(String, String, String)] = [
+            ("00小说网", "https://www.00shuge.com/modules/article/search.php?q=斗破苍穹", "tag.td.0@tag.a@text"),
+            ("天域小说网", "http://www.tycqzw.info/search.php?searchkey=斗破苍穹", "class.even.0@tag.a.0@text"),
+            ("笔趣阁 bqg9", "https://www.bqg9.xyz/modules/article/search.php?searchkey=斗破苍穹", "tag.td.0@tag.a@text")
+        ]
+        for (name, rawURL, nameRule) in cases {
+            let encoded = rawURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? rawURL
+            let (data, response) = try await URLSession.shared.data(from: URL(string: encoded)!)
+            let html = SourceClient.decode(data: data, response: response)
+            let rows = RuleRunner.elements("class.grid@tag.tr", html: html, baseUrl: rawURL)
+            let firstName = rows.isEmpty ? "" : RuleRunner.string(nameRule, html: rows[0], baseUrl: rawURL)
+            print("[LIVE][PARSE] \(name): HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0), \(data.count) 字节, \(rows.count) 行, 第一本 \(firstName)")
+            XCTAssertFalse(rows.isEmpty, "\(name) 解析出 0 行")
+            XCTAssertFalse(firstName.isEmpty, "\(name) 第一本没有书名")
         }
     }
 
