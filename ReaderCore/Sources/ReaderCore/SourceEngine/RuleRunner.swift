@@ -42,7 +42,7 @@ public enum RuleRunner {
 
         let tokens = resolved.components(separatedBy: "@")
         guard let first = tokens.first, !first.isEmpty else { return [] }
-        guard let doc = try? SwiftSoup.parse(html) else { return [] }
+        guard let doc = parseDocument(html) else { return [] }
 
         // 列表规则常见 `class.book-list@tag.li`，要一路选下去
         let (firstSelector, firstIndex) = cssToken(first)
@@ -157,7 +157,7 @@ public enum RuleRunner {
         let tokens = rule.components(separatedBy: "@")
         guard let first = tokens.first, !first.isEmpty else { return "" }
 
-        guard let doc = try? SwiftSoup.parse(html) else { return "" }
+        guard let doc = parseDocument(html) else { return "" }
         let (selector, index) = cssToken(first)
         guard var matched = try? doc.select(selector).array(), !matched.isEmpty else { return "" }
 
@@ -224,6 +224,26 @@ public enum RuleRunner {
             }
             return raw
         }
+    }
+
+    /// SwiftSoup 的 HTML5 解析器遇到“裸” `<tr>` / `<td>` 片段时会丢掉表格上下文，
+    /// 结果 `doc.select("td")` 一条也选不到。搜索列表规则通常先把 `<tr>` 取出来，
+    /// 再对每一行跑 `tag.td.0@tag.a@text`，所以这里必须按标签补回上下文。
+    private static func parseDocument(_ html: String) -> Document? {
+        let text = html.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("<tr") {
+            return try? SwiftSoup.parse("<table><tbody>\(text)</tbody></table>")
+        }
+        if text.hasPrefix("<td") || text.hasPrefix("<th") {
+            return try? SwiftSoup.parse("<table><tbody><tr>\(text)</tr></tbody></table>")
+        }
+        if text.hasPrefix("<li") {
+            return try? SwiftSoup.parse("<ul>\(text)</ul>")
+        }
+        if text.hasPrefix("<option") {
+            return try? SwiftSoup.parse("<select>\(text)</select>")
+        }
+        return try? SwiftSoup.parse(text)
     }
 
     /// `class.x` / `id.x` / `tag.x` / 裸 CSS，末尾可带 `.索引`。

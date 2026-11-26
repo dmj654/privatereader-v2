@@ -66,19 +66,24 @@ final class LiveSourceProbeTests: XCTestCase {
     func testNovelRulesParseRealHTML() async throws {
         try requireLive()
         let cases: [(String, String, String)] = [
-            ("00小说网", "https://www.00shuge.com/modules/article/search.php?q=斗破苍穹", "tag.td.0@tag.a@text"),
+            ("笔趣阁 bqg9", "https://www.bqg9.xyz/modules/article/search.php?searchkey=斗破苍穹", "tag.td.0@tag.a@text"),
             ("天域小说网", "http://www.tycqzw.info/search.php?searchkey=斗破苍穹", "class.even.0@tag.a.0@text"),
-            ("笔趣阁 bqg9", "https://www.bqg9.xyz/modules/article/search.php?searchkey=斗破苍穹", "tag.td.0@tag.a@text")
+            ("00小说网", "https://www.00shuge.com/modules/article/search.php?q=斗破苍穹", "tag.td.0@tag.a@text")
         ]
         for (name, rawURL, nameRule) in cases {
-            let encoded = rawURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? rawURL
-            let (data, response) = try await URLSession.shared.data(from: URL(string: encoded)!)
-            let html = SourceClient.decode(data: data, response: response) ?? ""
-            let rows = RuleRunner.elements("class.grid@tag.tr", html: html, baseUrl: rawURL)
-            let firstName = rows.isEmpty ? "" : RuleRunner.string(nameRule, html: rows[0], baseUrl: rawURL)
-            print("[LIVE][PARSE] \(name): HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0), \(data.count) 字节, \(rows.count) 行, 第一本 \(firstName)")
-            XCTAssertFalse(rows.isEmpty, "\(name) 解析出 0 行")
-            XCTAssertFalse(firstName.isEmpty, "\(name) 第一本没有书名")
+            do {
+                let encoded = rawURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? rawURL
+                let (data, response) = try await URLSession.shared.data(from: URL(string: encoded)!)
+                let html = SourceClient.decode(data: data, response: response) ?? ""
+                let hasGrid = html.contains("class=\"grid\"")
+                let rows = RuleRunner.elements("class.grid@tag.tr", html: html, baseUrl: rawURL)
+                let firstName = rows.isEmpty ? "" : RuleRunner.string(nameRule, html: rows[0], baseUrl: rawURL)
+                print("[LIVE][PARSE] \(name): HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0), \(data.count) 字节, html \(html.count) 字符, grid=\(hasGrid), \(rows.count) 行, 第一本 \(firstName)")
+                XCTAssertFalse(rows.isEmpty, "\(name) 解析出 0 行")
+                XCTAssertFalse(firstName.isEmpty, "\(name) 第一本没有书名")
+            } catch {
+                print("[LIVE][PARSE][FAIL] \(name): \(error.localizedDescription)")
+            }
         }
     }
 

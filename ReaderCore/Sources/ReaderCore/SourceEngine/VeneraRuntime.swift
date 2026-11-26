@@ -49,13 +49,14 @@ public final class VeneraRuntime: @unchecked Sendable {
                        page: Int = 1,
                        timeout: TimeInterval = 30) async throws -> [OnlineBook] {
         let result = try await perform(source: source, timeout: timeout, call: """
-        await __source.search.load(\(jsLiteral(keyword)), [], \(max(1, page)))
+        JSON.stringify(await __source.search.load(\(jsLiteral(keyword)), [], \(max(1, page))))
         """)
-        guard let object = result as? [String: Any] else {
+        let decoded = jsonValue(result)
+        guard let object = decoded as? [String: Any] else {
             throw VeneraEngineError.emptyResult("搜索结果")
         }
         let comics = (object["comics"] as? [[String: Any]])
-            ?? (result as? [[String: Any]])
+            ?? (decoded as? [[String: Any]])
             ?? []
         return comics.compactMap { comic -> OnlineBook? in
             let id = string(comic["id"])
@@ -89,10 +90,11 @@ public final class VeneraRuntime: @unchecked Sendable {
                     ? Array.from(d.chapters.entries())
                     : Object.entries(d.chapters);
             }
-            return d;
+            return JSON.stringify(d);
         })()
         """)
-        guard let object = result as? [String: Any] else {
+        let decoded = jsonValue(result)
+        guard let object = decoded as? [String: Any] else {
             throw VeneraEngineError.emptyResult("漫画详情")
         }
         let title = string(object["title"])
@@ -144,12 +146,13 @@ public final class VeneraRuntime: @unchecked Sendable {
                       epId: String,
                       timeout: TimeInterval = 70) async throws -> [String] {
         let result = try await perform(source: source, timeout: timeout, call: """
-        await __source.comic.loadEp(\(jsLiteral(comicId)), \(jsLiteral(epId)))
+        JSON.stringify(await __source.comic.loadEp(\(jsLiteral(comicId)), \(jsLiteral(epId))))
         """)
+        let decoded = jsonValue(result)
         let images: [Any]
-        if let object = result as? [String: Any], let list = object["images"] as? [Any] {
+        if let object = decoded as? [String: Any], let list = object["images"] as? [Any] {
             images = list
-        } else if let list = result as? [Any] {
+        } else if let list = decoded as? [Any] {
             images = list
         } else {
             throw VeneraEngineError.emptyResult("章节图片")
@@ -324,6 +327,19 @@ public final class VeneraRuntime: @unchecked Sendable {
         guard let data = try? JSONSerialization.data(withJSONObject: [value]),
               let text = String(data: data, encoding: .utf8) else { return "\"\"" }
         return String(text.dropFirst().dropLast())
+    }
+
+    /// Venera 的返回值里经常带 Map / 数组 / 嵌套对象。直接 `toObject()`
+    /// 在不同 JavaScriptCore 版本上会丢字段，所以统一走 `JSON.stringify`
+    /// 再把字符串解析成 Foundation 对象。
+    private func jsonValue(_ value: Any?) -> Any? {
+        guard let text = value as? String else { return value }
+        guard let data = text.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data,
+                                                             options: [.fragmentsAllowed]) else {
+            return nil
+        }
+        return object
     }
 
     private func string(_ value: Any?) -> String {

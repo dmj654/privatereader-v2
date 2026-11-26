@@ -16,6 +16,11 @@ final class NovelRuleFixtureTests: XCTestCase {
     func testBqg9SearchRulesParseRealFixture() throws {
         let html = try html()
         let rows = RuleRunner.elements("class.grid@tag.tr", html: html, baseUrl: "https://www.bqg9.xyz")
+        print("[FIXTURE] rows=\(rows.count)")
+        for index in 0..<min(3, rows.count) {
+            print("[FIXTURE] row\(index) outer=\(rows[index].prefix(180))")
+            print("[FIXTURE] row\(index) name=\(RuleRunner.string("tag.td.0@tag.a@text", html: rows[index], baseUrl: "https://www.bqg9.xyz"))")
+        }
         XCTAssertEqual(rows.count, 51, "表头 + 50 条数据行")
         XCTAssertEqual(RuleRunner.string("tag.td.0@tag.a@text", html: rows[1], baseUrl: "https://www.bqg9.xyz"),
                        "斗破苍穹")
