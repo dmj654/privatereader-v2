@@ -97,7 +97,9 @@ public final class VeneraRuntime: @unchecked Sendable {
         }
         let title = string(object["title"])
         guard !title.isEmpty else {
-            throw VeneraEngineError.emptyResult("漫画标题（返回字段：\(object.keys.sorted().joined(separator: ","))）")
+            let dump = object.keys.sorted().map { "\($0)=\(String(describing: object[$0]))" }
+                .joined(separator: " | ")
+            throw VeneraEngineError.emptyResult("漫画标题（返回：\(dump)）")
         }
 
         let tagObject = object["tags"] as? [String: Any] ?? [:]

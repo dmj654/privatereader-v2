@@ -73,7 +73,7 @@ final class LiveSourceProbeTests: XCTestCase {
         for (name, rawURL, nameRule) in cases {
             let encoded = rawURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? rawURL
             let (data, response) = try await URLSession.shared.data(from: URL(string: encoded)!)
-            let html = SourceClient.decode(data: data, response: response)
+            let html = SourceClient.decode(data: data, response: response) ?? ""
             let rows = RuleRunner.elements("class.grid@tag.tr", html: html, baseUrl: rawURL)
             let firstName = rows.isEmpty ? "" : RuleRunner.string(nameRule, html: rows[0], baseUrl: rawURL)
             print("[LIVE][PARSE] \(name): HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0), \(data.count) 字节, \(rows.count) 行, 第一本 \(firstName)")
