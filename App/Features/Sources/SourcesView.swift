@@ -82,13 +82,9 @@ struct SourcesView: View {
         ZStack {
             Palette.bg.ignoresSafeArea()
 
-            if sources.isEmpty {
-                emptyState
-            } else {
-                list
-            }
+            list
         }
-        .navigationTitle("书源")
+        .navigationTitle(kindFilter.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -98,7 +94,7 @@ struct SourcesView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 15, weight: .semibold))
                 }
-                .accessibilityLabel("导入书源")
+                .accessibilityLabel("导入\(kindFilter.title)")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -139,23 +135,28 @@ struct SourcesView: View {
     private var list: some View {
         ScrollView {
             LazyVStack(spacing: 10) {
-                summaryCard
                 kindPicker
-                filterBar
-                if filteredSources.isEmpty {
-                    Text(kindSources.isEmpty
-                         ? "还没有\(kindFilter.title)，点右上角 + 导入一份"
-                         : (searchText.isEmpty ? "这个筛选下没有\(kindFilter.title)" : "没有匹配「\(searchText)」的\(kindFilter.title)"))
-                        .font(Typo.caption)
-                        .foregroundStyle(Palette.ink3)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
+
+                if kindSources.isEmpty {
+                    emptyState
                 } else {
-                    ForEach(filteredSources) { source in
-                        row(source)
+                    summaryCard
+                    filterBar
+
+                    if filteredSources.isEmpty {
+                        Text(searchText.isEmpty ? "这个筛选下没有\(kindFilter.title)" : "没有匹配「\(searchText)」的\(kindFilter.title)")
+                            .font(Typo.caption)
+                            .foregroundStyle(Palette.ink3)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 24)
+                    } else {
+                        ForEach(filteredSources) { source in
+                            row(source)
+                        }
                     }
                 }
-                Text("共 \(sources.count) 条 · 启用 \(sources.filter(\.enabled).count) 条 · 当前显示 \(filteredSources.count) 条")
+
+                Text("\(kindFilter.title)共 \(kindSources.count) 条 · 启用 \(enabledCount) 条 · 当前显示 \(filteredSources.count) 条")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.ink3)
                     .padding(.top, 4)
@@ -240,7 +241,7 @@ struct SourcesView: View {
                 Text("\(kindFilter.title) \(kindSources.count) 条")
                     .font(Typo.headline)
                     .foregroundStyle(Palette.ink)
-                Text("启用 \(enabledCount) 条 · 全部 \(sources.count) 条（小说 \(novelTotal) / 漫画 \(comicTotal)）")
+                Text("启用 \(enabledCount) 条 · 共 \(kindSources.count) 条")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.ink3)
             }
@@ -356,13 +357,17 @@ struct SourcesView: View {
         VStack(spacing: 16) {
             EmptyStateView(
                 symbol: "tray.and.arrow.down",
-                title: "还没有书源",
-                message: "导入 legado 格式的书源 JSON，就能搜索和阅读网文。"
+                title: "还没有\(kindFilter.title)",
+                message: kindFilter == .comic
+                    ? "导入 legado 格式的漫画源 JSON，就能搜索和阅读在线漫画。"
+                    : "导入 legado 格式的书源 JSON，就能搜索和阅读网文。"
             )
-            Button("导入书源") { showingImport = true }
+            Button("导入\(kindFilter.title)") { showingImport = true }
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, 44)
         }
+        .padding(.top, 36)
+        .padding(.bottom, 20)
     }
 
     private var bottomBar: some View {
@@ -383,7 +388,7 @@ struct SourcesView: View {
                     }
             }
             .buttonStyle(.plain)
-            .disabled(sources.isEmpty)
+            .disabled(kindSources.isEmpty)
 
             Button {
                 showingImport = true

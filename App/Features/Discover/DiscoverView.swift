@@ -42,10 +42,11 @@ struct DiscoverView: View {
                         }
                     }
 
-                    if sourceCount == 0 {
+                    kindPicker
+
+                    if currentKindCount == 0 {
                         importGuide
                     } else {
-                        kindPicker
                         sourceCard
                         maintenanceCard
                         ExploreSection(kind: kind)
@@ -86,6 +87,7 @@ struct DiscoverView: View {
 
     private var kindTitle: String { kind == .comic ? "漫画源" : "小说源" }
     private var wantsComic: Bool { kind == .comic }
+    private var currentKindCount: Int { kind == .comic ? comicCount : novelCount }
 
     // MARK: 块
 
@@ -98,16 +100,18 @@ struct DiscoverView: View {
                     .padding(.top, 4)
 
                 VStack(spacing: 5) {
-                    Text("先导入一份书源")
+                    Text("先导入一份\(kindTitle)")
                         .font(Typo.headline)
                         .foregroundStyle(Palette.ink)
-                    Text("书源决定了能搜到哪些站的书。支持 legado 导出的 JSON，一次可以导入几千条。")
+                    Text(kind == .comic
+                         ? "漫画源决定能搜到哪些在线漫画。支持 legado 导出的 JSON，一次可以导入几千条。"
+                         : "书源决定能搜到哪些站的书。支持 legado 导出的 JSON，一次可以导入几千条。")
                         .font(Typo.caption)
                         .foregroundStyle(Palette.ink3)
                         .multilineTextAlignment(.center)
                 }
 
-                Button("导入书源") { showingImport = true }
+                Button("导入\(kindTitle)") { showingImport = true }
                     .buttonStyle(PrimaryButtonStyle())
 
                 NavigationLink {
@@ -160,10 +164,10 @@ struct DiscoverView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("书源")
+                        Text(kindTitle)
                             .font(Typo.headline)
                             .foregroundStyle(Palette.ink)
-                        Text("小说 \(novelCount) 条 · 漫画 \(comicCount) 条 · 当前 \(kindTitle) \(kind == .comic ? comicCount : novelCount) 条")
+                        Text("\(currentKindCount) 条 · 启用 \(enabledCount) 条 · 完全独立管理")
                             .font(Typo.micro)
                             .foregroundStyle(Palette.ink3)
                     }
@@ -260,9 +264,9 @@ struct DiscoverView: View {
         do {
             let all = try env.sources.all()
             sourceCount = all.count
-            enabledCount = all.filter(\.enabled).count
             novelCount = all.filter { $0.type != 2 }.count
             comicCount = all.filter { $0.type == 2 }.count
+            enabledCount = all.filter { $0.enabled && (($0.type == 2) == wantsComic) }.count
             let invalid = (try? env.sources.invalidSources()) ?? []
             invalidCount = invalid.filter { ($0.type == 2) == wantsComic }.count
             loadError = nil
