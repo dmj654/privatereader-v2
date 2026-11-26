@@ -101,7 +101,7 @@ struct SourcesView: View {
             if !sources.isEmpty { bottomBar }
         }
         .sheet(isPresented: $showingImport) {
-            SourceImportSheet { summary in
+            SourceImportSheet(category: kindFilter == .comic ? .comic : .novel) { summary in
                 reload()
                 if summary.total > 0 {
                     errorMessage = nil

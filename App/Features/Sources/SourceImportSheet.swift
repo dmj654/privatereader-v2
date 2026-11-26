@@ -7,10 +7,14 @@ import ReaderCore
 ///
 /// 网友源动辄几千条、几 MB，直接粘进 TextEditor 会卡；
 /// 所以默认推荐「从文件导入」，粘贴框只作为小批量补充。
+///
+/// `category` 决定这个面板是小说入口还是漫画入口：标题、文案、
+/// 以及落库时的类型过滤都跟着它走，避免两个入口互相串源。
 struct SourceImportSheet: View {
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
 
+    var category: SourceImportCategory = .novel
     var onImported: (SourceImportSummary) -> Void
 
     @State private var text = ""
@@ -19,6 +23,8 @@ struct SourceImportSheet: View {
     @State private var errorMessage: String?
     @State private var showingFilePicker = false
     @State private var forceEnable = true
+
+    private var title: String { "导入\(category.title)" }
 
     var body: some View {
         NavigationStack {
@@ -38,7 +44,7 @@ struct SourceImportSheet: View {
                         if isImporting {
                             HStack(spacing: 8) {
                                 ProgressView().controlSize(.small)
-                                Text("正在解析并写入，几千条源可能要十几秒…")
+                                Text("正在解析并写入，几千条\(category.title)可能要十几秒…")
                                     .font(Typo.micro)
                                     .foregroundStyle(Palette.ink3)
                             }
@@ -50,7 +56,7 @@ struct SourceImportSheet: View {
                     .padding(.vertical, 14)
                 }
             }
-            .navigationTitle("导入书源")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -86,7 +92,7 @@ struct SourceImportSheet: View {
                             Text("正在导入，请稍候…")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(Palette.ink)
-                            Text("几千条书源需要十几秒")
+                            Text("几千条\(category.title)需要十几秒")
                                 .font(Typo.micro)
                                 .foregroundStyle(Palette.ink3)
                         }
@@ -127,7 +133,7 @@ struct SourceImportSheet: View {
                     Text("从文件导入")
                         .font(Typo.headline)
                         .foregroundStyle(Palette.ink)
-                    Text("支持 legado 导出的 .json / .txt，几千条也可以")
+                    Text("支持 legado 导出的 .json / .txt，只导入\(category.title)")
                         .font(Typo.micro)
                         .foregroundStyle(Palette.ink3)
                 }
@@ -186,10 +192,15 @@ struct SourceImportSheet: View {
                 }
 
             if text.lowercased().hasPrefix("http") {
-                Label("将从这个链接下载书源", systemImage: "link")
+                Label("将从这个链接下载\(category.title)", systemImage: "link")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.accent)
             }
+
+            Text("只支持 legado 规则的 JSON。Venera 的 index.json 指向 JavaScript 漫画源，需要 JS 运行时，当前无法导入。")
+                .font(Typo.micro)
+                .foregroundStyle(Palette.ink3)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .background(Palette.surface)
@@ -206,7 +217,7 @@ struct SourceImportSheet: View {
                 Text("导入后全部启用")
                     .font(.system(size: 13.5))
                     .foregroundStyle(Palette.ink)
-                Text("关掉则沿用书源自带的开关状态")
+                Text("关掉则沿用\(category.title)自带的开关状态")
                     .font(Typo.micro)
                     .foregroundStyle(Palette.ink3)
             }
@@ -226,7 +237,7 @@ struct SourceImportSheet: View {
             Label("导入完成", systemImage: "checkmark.circle.fill")
                 .font(Typo.headline)
                 .foregroundStyle(Color(hex: 0x4E8A5F))
-            Text("新增 \(summary.added) 条，覆盖 \(summary.updated) 条，共 \(summary.total) 条。")
+            Text("新增 \(summary.added) 条，覆盖 \(summary.updated) 条，共 \(summary.total) 条\(category.title)。")
                 .font(Typo.caption)
                 .foregroundStyle(Palette.ink2)
             if summary.total > 0 {
@@ -249,7 +260,7 @@ struct SourceImportSheet: View {
             var data = try Data(contentsOf: url)
             if SourceArchive.looksLikeZip(data) {
                 guard let json = SourceArchive.jsonData(from: data) else {
-                    errorMessage = "这个压缩包里没有 .json 书源文件。"
+                    errorMessage = "这个压缩包里没有 .json \(category.title)文件。"
                     return
                 }
                 data = json
@@ -318,25 +329,29 @@ struct SourceImportSheet: View {
 
         let repo = env.sources
         let force = forceEnable
-        env.importLog.append("书源导入开始：\(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file))")
+        env.importLog.append("\(category.title)导入开始：\(ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file))")
 
         Task {
             do {
                 let result = try await Task.detached(priority: .userInitiated) {
-                    try SourceImportService(repo: repo).importJSON(data, forceEnabled: force)
+                    try SourceImportService(repo: repo).importJSON(
+                        data,
+                        forceEnabled: force,
+                        category: category
+                    )
                 }.value
                 await MainActor.run {
                     isImporting = false
                     summary = result
                     text = ""
-                    env.importLog.append("书源导入完成：新增 \(result.added)，覆盖 \(result.updated)")
+                    env.importLog.append("\(category.title)导入完成：新增 \(result.added)，覆盖 \(result.updated)")
                     onImported(result)
                 }
             } catch {
                 await MainActor.run {
                     isImporting = false
                     let message = readable(error)
-                    env.importLog.append("书源导入失败：\(message)")
+                    env.importLog.append("\(category.title)导入失败：\(message)")
                     errorMessage = message
                 }
             }

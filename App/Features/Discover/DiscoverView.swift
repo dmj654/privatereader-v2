@@ -78,7 +78,7 @@ struct DiscoverView: View {
             Text("只删当前分类里上次测试明确失败或超时的源，正常的源不动。")
         }
         .sheet(isPresented: $showingImport) {
-            SourceImportSheet { _ in reload() }
+            SourceImportSheet(category: kind == .comic ? .comic : .novel) { _ in reload() }
                 .presentationDetents([.medium, .large])
         }
         .onChange(of: kind) { _ in reload() }
