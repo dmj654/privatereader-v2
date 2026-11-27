@@ -355,7 +355,7 @@ struct ExploreSection: View {
                     timeout: 30
                 )
                 let pages = try await pagesTask
-                let loaded = try await sectionsTask
+                var loaded = try await sectionsTask
                 guard !pages.isEmpty else {
                     await MainActor.run {
                         isLoading = false
@@ -363,8 +363,13 @@ struct ExploreSection: View {
                     }
                     return
                 }
-                if Task.isCancelled { return }
                 let first = pages[0]
+                // 并发时还不知道首页的 type，先用 multiPageComicList 试；
+                // 如果首页其实是 mixed，补一次精确调用。
+                if loaded.isEmpty, first.type != "multiPageComicList" {
+                    loaded = try await env.veneraRuntime.explore(source: source, page: first, timeout: 30)
+                }
+                if Task.isCancelled { return }
                 ExploreCache.shared.storeHome(sourceID: source.id,
                                               pages: pages,
                                               sections: loaded,

@@ -331,6 +331,7 @@ struct NovelReaderView: View {
         .sheet(item: $purifierRequest) { request in
             PurifierRuleEditor(selectedText: request.text,
                                bookId: model.book.id) {
+                UserDefaults.standard.set(true, forKey: purifyKey(for: model.book))
                 configurePurifier(for: model.book)
                 showToast("净化规则已保存，本章已重新排版")
             }

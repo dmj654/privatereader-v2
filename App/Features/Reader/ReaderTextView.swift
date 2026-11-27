@@ -28,6 +28,7 @@ struct ReaderTextView: UIViewRepresentable {
         view.textContainer.lineFragmentPadding = 0
         view.backgroundColor = background
         view.delegate = context.coordinator
+        view.isUserInteractionEnabled = isInteractive
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.setContentHuggingPriority(.defaultLow, for: .vertical)
 
@@ -46,6 +47,7 @@ struct ReaderTextView: UIViewRepresentable {
         view.backgroundColor = background
         view.textContainerInset = textInsets
         view.isSelectable = isInteractive
+        view.isUserInteractionEnabled = isInteractive
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {

@@ -94,6 +94,7 @@ struct PurifierRuleEditor: View {
     @State private var replacement = ""
     @State private var isRegex = false
     @State private var scope: UserPurifierRule.Scope = .book
+    @State private var errorMessage: String?
 
     init(selectedText: String, bookId: String, onSave: @escaping () -> Void) {
         self.selectedText = selectedText
@@ -134,6 +135,14 @@ struct PurifierRuleEditor: View {
             }
             .navigationTitle("新建净化规则")
             .navigationBarTitleDisplayMode(.inline)
+            .alert("正则表达式无效", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("知道了", role: .cancel) { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
@@ -147,8 +156,14 @@ struct PurifierRuleEditor: View {
     }
 
     private func save() {
+        let trimmed = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if isRegex, (try? NSRegularExpression(pattern: trimmed)) == nil {
+            errorMessage = "这段正则无法编译，请检查括号、转义和特殊字符。"
+            return
+        }
         let rule = UserPurifierRule(
-            pattern: pattern,
+            pattern: trimmed,
             replacement: replacement,
             isRegex: isRegex,
             scope: scope,

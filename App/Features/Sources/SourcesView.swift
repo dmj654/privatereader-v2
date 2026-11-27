@@ -706,7 +706,7 @@ struct SourcesView: View {
     }
 
     private func checkSelected() {
-        let targets = kindSources.filter { selectedIDs.contains($0.id) && $0.enabled }
+        let targets = kindSources.filter { selectedIDs.contains($0.id) }
         startBatch(targets)
     }
 
