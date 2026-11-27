@@ -60,6 +60,43 @@ final class VeneraRuntimeTests: XCTestCase {
         XCTAssertEqual(pages.count, 2)
     }
 
+    func testExploreSectionsPreserveOrderAndMapToBooks() async throws {
+        let runtime = VeneraRuntime()
+        let script = """
+        class Probe extends ComicSource {
+            name = "Probe"
+            key = "probe"
+            version = "1.0"
+            explore = [{
+                title: "首页",
+                type: "singlePageWithMultiPart",
+                load: async () => ({
+                    "推荐": [
+                        { id: "r1", title: "推荐漫画", subTitle: "作者甲", cover: "https://example.com/r1.jpg", tags: ["热血"] }
+                    ],
+                    "热门": [
+                        { id: "h1", title: "热门漫画", subTitle: "作者乙", cover: "", tags: [] },
+                        { id: "h2", title: "热门第二本", subTitle: "作者丙", cover: "", tags: [] }
+                    ]
+                })
+            }]
+        }
+        """
+        let src = source(script)
+
+        let pages = try await runtime.explorePages(source: src)
+        XCTAssertEqual(pages.map(\.title), ["首页"])
+        XCTAssertEqual(pages.first?.type, "singlePageWithMultiPart")
+
+        let page = try XCTUnwrap(pages.first)
+        let sections = try await runtime.explore(source: src, page: page)
+        XCTAssertEqual(sections.map(\.title), ["推荐", "热门"], "栏目顺序必须和源返回的 JSON 一致")
+        XCTAssertEqual(sections[0].books.first?.name, "推荐漫画")
+        XCTAssertEqual(sections[0].books.first?.author, "作者甲")
+        XCTAssertEqual(sections[0].books.first?.bookUrl, "r1")
+        XCTAssertEqual(sections[1].books.count, 2)
+    }
+
     func testConvertAndHtmlBridge() async throws {
         let runtime = VeneraRuntime()
         let script = """

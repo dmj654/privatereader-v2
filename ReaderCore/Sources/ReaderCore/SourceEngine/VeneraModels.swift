@@ -168,6 +168,34 @@ public struct VeneraSource: Equatable, Identifiable, Sendable {
     }
 }
 
+/// Venera 源自己的发现页（不是 legado 的 exploreUrl）。
+public struct VeneraExplorePage: Equatable, Identifiable, Sendable {
+    public var title: String
+    public var type: String
+
+    public var id: String { "\(title)|\(type)" }
+
+    public init(title: String, type: String) {
+        self.title = title
+        self.type = type
+    }
+}
+
+/// 发现页里的一个栏目，例如「推荐」「热门」「本周排行」。
+public struct VeneraExploreSection: Equatable, Identifiable, Sendable {
+    public var title: String
+    public var books: [OnlineBook]
+    public var viewMore: String?
+
+    public var id: String { title }
+
+    public init(title: String, books: [OnlineBook], viewMore: String? = nil) {
+        self.title = title
+        self.books = books
+        self.viewMore = viewMore
+    }
+}
+
 /// 搜索/详情链路统一用这个，不再到处判断“是 legado 还是 Venera”。
 public enum SearchTarget: Identifiable, Sendable, Equatable {
     case legado(LegadoSource)

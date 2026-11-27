@@ -90,10 +90,127 @@ public final class VeneraRuntime: @unchecked Sendable {
         }
     }
 
+    // MARK: - 发现页
+
+    /// 读取源声明的发现页列表。CopyManga 的类型是 `singlePageWithMultiPart`，
+    /// 其他常见类型是 `multiPartPage`、`multiPageComicList`、`mixed`。
+    public func explorePages(source: VeneraSource,
+                             timeout: TimeInterval = 20) async throws -> [VeneraExplorePage] {
+        let result = try await perform(source: source, timeout: timeout, call: """
+        await (async () => {
+            if (!Array.isArray(__source.explore) || __source.explore.length === 0) {
+                throw '这个源没有实现发现页';
+            }
+            const pages = __source.explore.map(p => ({
+                title: String(p.title || ''),
+                type: String(p.type || '')
+            }));
+            return JSON.stringify(pages);
+        })()
+        """)
+        guard let array = jsonValue(result) as? [[String: Any]] else {
+            throw VeneraEngineError.emptyResult("发现页列表")
+        }
+        return array.compactMap { item in
+            let title = string(item["title"])
+            guard !title.isEmpty else { return nil }
+            return VeneraExplorePage(title: title, type: string(item["type"]))
+        }
+    }
+
+    public func explore(source: VeneraSource,
+                        page: VeneraExplorePage,
+                        timeout: TimeInterval = 30) async throws -> [VeneraExploreSection] {
+        let result = try await perform(source: source, timeout: timeout, call: """
+        await (async () => {
+            if (!Array.isArray(__source.explore) || __source.explore.length === 0) {
+                throw '这个源没有实现发现页';
+            }
+            const page = __source.explore.find(p => String(p.title || '') === \(jsLiteral(page.title)))
+                || __source.explore[0];
+            if (!page) {
+                throw '这个发现页不存在';
+            }
+            const arg = page.type === 'multiPageComicList' ? 1
+                : (page.type === 'mixed' ? 0 : null);
+            let value;
+            if (typeof page.load === 'function') {
+                value = await page.load(arg);
+            } else if (typeof page.loadNext === 'function') {
+                value = await page.loadNext(null);
+            } else {
+                throw '这个发现页没有实现 load 或 loadNext';
+            }
+
+            const looksComic = (x) => !!x && typeof x === 'object'
+                && ('id' in x) && ('title' in x) && !Array.isArray(x.comics);
+            let list = [];
+            if (Array.isArray(value)) {
+                if (value.length && value[0] && Array.isArray(value[0].comics)) {
+                    list = value;
+                } else if (value.length && looksComic(value[0])) {
+                    list = [{ title: String(page.title || ''), comics: value }];
+                }
+            } else if (value && Array.isArray(value.data)) {
+                for (const item of value.data) {
+                    if (Array.isArray(item)) {
+                        list.push({ title: String(page.title || ''), comics: item });
+                    } else if (item && Array.isArray(item.comics)) {
+                        list.push(item);
+                    }
+                }
+            } else if (value && Array.isArray(value.comics)) {
+                list = [{ title: String(page.title || ''), comics: value.comics }];
+            } else if (value && typeof value === 'object') {
+                list = Object.keys(value).map(k => ({ title: k, comics: value[k] }));
+            }
+
+            list = list.filter(s => s && Array.isArray(s.comics) && s.comics.length > 0)
+                .map(s => ({
+                    title: String(s.title || ''),
+                    comics: s.comics,
+                    viewMore: s.viewMore ? String(s.viewMore) : null
+                }));
+            return JSON.stringify(list);
+        })()
+        """)
+        guard let array = jsonValue(result) as? [[String: Any]] else {
+            throw VeneraEngineError.emptyResult("发现页内容")
+        }
+        return array.compactMap { item in
+            let rawComics = item["comics"] as? [[String: Any]] ?? []
+            let books = rawComics.compactMap { onlineBook(from: $0, source: source) }
+            guard !books.isEmpty else { return nil }
+            let title = string(item["title"]).isEmpty ? page.title : string(item["title"])
+            return VeneraExploreSection(title: title,
+                                        books: books,
+                                        viewMore: string(item["viewMore"]).isEmpty ? nil : string(item["viewMore"]))
+        }
+    }
+
+    private func onlineBook(from comic: [String: Any], source: VeneraSource) -> OnlineBook? {
+        let id = string(comic["id"])
+        let title = string(comic["title"])
+        guard !id.isEmpty, !title.isEmpty else { return nil }
+        let subtitle = string(comic["subTitle"]).isEmpty
+            ? string(comic["subtitle"])
+            : string(comic["subTitle"])
+        let tags = (comic["tags"] as? [Any])?.map { string($0) }.filter { !$0.isEmpty } ?? []
+        return OnlineBook(
+            sourceId: source.id,
+            name: title,
+            author: subtitle,
+            coverUrl: string(comic["cover"]),
+            intro: string(comic["description"]),
+            kind: tags.joined(separator: " / "),
+            lastChapter: "",
+            bookUrl: id
+        )
+    }
+
     public func detail(source: VeneraSource,
                        comicId: String,
-                       timeout: TimeInterval = 40) async throws -> VeneraDetail {
-        let result = try await perform(source: source, timeout: timeout, call: """
+                       timeout: TimeInterval = 40) async throws -> VeneraDetail {        let result = try await perform(source: source, timeout: timeout, call: """
         await (async () => {
             const d = await __source.comic.loadInfo(\(jsLiteral(comicId)));
             if (d && d.chapters) {
@@ -250,7 +367,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.7.4';")
+        context.evaluateScript("globalThis.appVersion = '1.7.5';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 

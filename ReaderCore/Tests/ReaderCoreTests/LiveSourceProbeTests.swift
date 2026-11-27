@@ -129,6 +129,15 @@ final class LiveSourceProbeTests: XCTestCase {
         XCTAssertFalse(books.isEmpty, "CopyManga 搜索返回 0 条")
         print("[LIVE] CopyManga 搜索：\(books.count) 本，第一本 \(books.first?.name ?? "-")")
 
+        let explorePages = try await runtime.explorePages(source: source, timeout: 25)
+        XCTAssertFalse(explorePages.isEmpty, "CopyManga 没有发现页")
+        let firstExplorePage = try XCTUnwrap(explorePages.first)
+        let sections = try await runtime.explore(source: source,
+                                                 page: firstExplorePage,
+                                                 timeout: 40)
+        XCTAssertFalse(sections.isEmpty, "CopyManga 发现页没有返回栏目")
+        print("[LIVE] CopyManga 发现页：\(explorePages.count) 页，栏目 \(sections.map { "\($0.title)(\($0.books.count))" }.joined(separator: "、"))")
+
         // 体检逻辑要和真实搜索同一量级：首轮 12 秒可能超时，但加长重试必须能通过。
         let checker = SourceHealthChecker(client: SourceClient(), venera: runtime)
         let quick = await checker.check(source, timeout: 12)
