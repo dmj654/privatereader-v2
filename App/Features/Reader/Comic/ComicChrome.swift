@@ -4,11 +4,11 @@ import SwiftUI
 struct ComicTopBar: View {
     let title: String
     let subtitle: String
-    let bookmarked: Bool
 
     let onBack: () -> Void
     let onCatalog: () -> Void
-    let onBookmark: () -> Void
+    /// 只有在线源能提供章节评论；本地漫画传 nil，不显示一个点不动的按钮。
+    let onComments: (() -> Void)?
     let onSettings: () -> Void
 
     var body: some View {
@@ -28,7 +28,9 @@ struct ComicTopBar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             square("list.bullet", action: onCatalog)
-            square(bookmarked ? "bookmark.fill" : "bookmark", action: onBookmark)
+            if let onComments {
+                square("text.bubble", action: onComments)
+            }
             square("slider.horizontal.3", action: onSettings)
         }
         .padding(.horizontal, 12)

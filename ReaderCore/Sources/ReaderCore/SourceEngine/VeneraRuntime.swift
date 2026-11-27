@@ -328,6 +328,46 @@ public final class VeneraRuntime: @unchecked Sendable {
         return urls
     }
 
+    /// 漫画阅读器里的「本章评论」。只有源声明了 `loadChapterComments` 才有；
+    /// 没声明的源明确报不支持，而不是返回空列表让用户以为评论被删了。
+    public func chapterComments(source: VeneraSource,
+                                comicId: String,
+                                epId: String,
+                                page: Int = 1,
+                                timeout: TimeInterval = 30) async throws -> VeneraCommentPage {
+        let result = try await perform(source: source, timeout: timeout, call: """
+        await (async () => {
+            if (typeof __source.comic.loadChapterComments !== 'function') {
+                throw new Error('当前源没有提供章节评论');
+            }
+            const r = await __source.comic.loadChapterComments(
+                \(jsLiteral(comicId)), \(jsLiteral(epId)), \(max(page, 1)), null
+            );
+            return JSON.stringify(r || { comments: [], maxPage: 1 });
+        })()
+        """)
+        let decoded = jsonValue(result)
+        let object = decoded as? [String: Any] ?? [:]
+        let rawComments = object["comments"] as? [[String: Any]] ?? []
+        let comments = rawComments.enumerated().compactMap { index, item -> VeneraComment? in
+            let content = string(item["content"])
+            guard !content.isEmpty else { return nil }
+            let rawID = string(item["id"])
+            let id = rawID.isEmpty ? "\(max(page, 1))-\(index)" : rawID
+            let reply = (item["replyCount"] as? NSNumber)?.intValue
+            return VeneraComment(
+                id: id,
+                userName: string(item["userName"]).isEmpty ? "匿名" : string(item["userName"]),
+                avatar: string(item["avatar"]),
+                content: content,
+                time: string(item["time"]),
+                replyCount: reply
+            )
+        }
+        let maxPage = (object["maxPage"] as? NSNumber)?.intValue ?? 1
+        return VeneraCommentPage(comments: comments, maxPage: max(maxPage, 1))
+    }
+
     /// 漫画图片通常不带登录 cookie，但部分站点要 Referer；统一给一个移动端 UA。
     public var imageHeaders: [String: String] {
         ["User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) "
@@ -367,7 +407,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.7.6';")
+        context.evaluateScript("globalThis.appVersion = '1.7.7';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 

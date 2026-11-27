@@ -45,6 +45,7 @@ struct ShelfView: View {
     @State private var importError: String?
     @State private var updateCount = 0
     @State private var isCheckingUpdates = false
+    @State private var isBackfillingCovers = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 13),
@@ -525,9 +526,30 @@ struct ShelfView: View {
                 map[book.id] = (try? env.progress.fetch(bookId: book.id))?.percent ?? 0
             }
             progressByBook = map
+            backfillCoversIfNeeded()
         } catch {
             books = []
             env.importLog.append("读取书架失败：\(error.localizedDescription)")
+        }
+    }
+
+    /// 在线书旧记录没有 coverPath，补一次源站封面；不挡列表首屏。
+    private func backfillCoversIfNeeded() {
+        guard !isBackfillingCovers else { return }
+        let missing = books.filter { $0.origin == .remote && $0.coverPath == nil }
+        guard !missing.isEmpty else { return }
+        isBackfillingCovers = true
+        Task {
+            var changed = false
+            for book in missing {
+                if await env.backfillCover(for: book) != nil {
+                    changed = true
+                }
+            }
+            await MainActor.run {
+                isBackfillingCovers = false
+                if changed { reload() }
+            }
         }
     }
 

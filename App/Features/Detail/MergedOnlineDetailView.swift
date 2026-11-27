@@ -550,7 +550,8 @@ final class MergedDetailModel: ObservableObject {
             let service = OnlineBookService(
                 client: env.sourceClient,
                 library: OnlineLibrary(paths: env.paths),
-                venera: env.veneraRuntime
+                venera: env.veneraRuntime,
+                paths: env.paths
             )
             let bundle: OnlineBookBundle
             switch source {

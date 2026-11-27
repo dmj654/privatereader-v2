@@ -208,7 +208,8 @@ final class SourceSwitchModel: ObservableObject {
             let service = OnlineBookService(
                 client: env.sourceClient,
                 library: OnlineLibrary(paths: env.paths),
-                venera: env.veneraRuntime
+                venera: env.veneraRuntime,
+                paths: env.paths
             )
             let updated: Book
             switch source {

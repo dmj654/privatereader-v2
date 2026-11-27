@@ -12,6 +12,9 @@ struct OnlineDetailView: View {
     @State private var errorMessage: String?
     @State private var shelfBook: Book?
     @State private var showReader = false
+    @State private var showCatalog = false
+    @State private var pendingChapter: Int?
+    @State private var isOpening = false
     @State private var isAdding = false
     @State private var isCaching = false
     @State private var cacheUsage: OnlineLibrary.CacheUsage?
@@ -63,13 +66,17 @@ struct OnlineDetailView: View {
         .fullScreenCover(isPresented: $showReader) {
             if let shelfBook {
                 if shelfBook.type == .comic {
-                    OnlineComicView(book: shelfBook)
+                    OnlineComicView(book: shelfBook, initialChapter: pendingChapter)
                         .environmentObject(env)
                 } else {
-                    NovelReaderView(book: shelfBook, env: env)
+                    NovelReaderView(book: shelfBook, env: env, initialChapter: pendingChapter)
                         .environmentObject(env)
                 }
             }
+        }
+        .sheet(isPresented: $showCatalog) {
+            catalogSheet
+                .presentationDetents([.medium, .large])
         }
         .overlay(alignment: .bottom) {
             if let toast {
@@ -147,26 +154,38 @@ struct OnlineDetailView: View {
 
     private var actionArea: some View {
         VStack(spacing: 9) {
-            if shelfBook == nil {
+            HStack(spacing: 9) {
                 Button {
-                    addToShelf()
+                    startReading(chapter: nil)
                 } label: {
-                    if isAdding {
+                    if isOpening || isAdding {
                         ProgressView().tint(.white)
                     } else {
-                        Text("加入书架")
+                        Label("开始阅读", systemImage: "play.fill")
+                            .font(.system(size: 14, weight: .semibold))
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                .disabled(isAdding || chapters.isEmpty)
-            } else {
-                Button {
-                    showReader = true
-                } label: {
-                    Text("开始阅读")
+                .disabled(isOpening || isAdding || chapters.isEmpty)
+
+                if shelfBook == nil {
+                    Button {
+                        addToShelf()
+                    } label: {
+                        Text("加入书架")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Palette.ink)
+                            .frame(width: 96, height: 46)
+                            .background(Palette.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: Radius.button, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: Radius.button, style: .continuous)
+                                    .strokeBorder(Palette.lineStrong, lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isOpening || isAdding || chapters.isEmpty)
                 }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(chapters.isEmpty)
             }
 
             if let shelfBook, !isComic {
@@ -224,32 +243,83 @@ struct OnlineDetailView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Palette.ink2)
                     Spacer()
-                    Text("共 \(chapters.count) 章")
+                    Text("共 \(chapters.count) \(isComic ? "话" : "章")")
                         .font(Typo.micro)
                         .foregroundStyle(Palette.ink3)
+                    Button("全部") { showCatalog = true }
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Palette.accent)
                 }
 
                 ForEach(Array(chapters.prefix(8).enumerated()), id: \.offset) { index, chapter in
-                    HStack(spacing: 8) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 10.5).monospacedDigit())
-                            .foregroundStyle(Palette.ink3)
-                            .frame(width: 22, alignment: .trailing)
-                        Text(chapter.name)
-                            .font(.system(size: 13))
-                            .foregroundStyle(Palette.ink)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
+                    Button {
+                        startReading(chapter: index)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("\(index + 1)")
+                                .font(.system(size: 10.5).monospacedDigit())
+                                .foregroundStyle(Palette.ink3)
+                                .frame(width: 22, alignment: .trailing)
+                            Text(chapter.name)
+                                .font(.system(size: 13))
+                                .foregroundStyle(Palette.ink)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Image(systemName: "play.circle")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Palette.accent.opacity(0.8))
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
 
                 if chapters.count > 8 {
-                    Text("还有 \(chapters.count - 8) 章，加入书架后在目录里看")
-                        .font(Typo.micro)
-                        .foregroundStyle(Palette.ink3)
+                    Button {
+                        showCatalog = true
+                    } label: {
+                        Text("还有 \(chapters.count - 8) \(isComic ? "话" : "章")，查看全部")
+                            .font(Typo.micro)
+                            .foregroundStyle(Palette.accent)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var catalogSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(Array(chapters.enumerated()), id: \.offset) { index, chapter in
+                    Button {
+                        showCatalog = false
+                        startReading(chapter: index)
+                    } label: {
+                        HStack {
+                            Text(chapter.name)
+                                .font(.system(size: 14))
+                                .foregroundStyle(Palette.ink)
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "play.circle")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Palette.accent)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .listStyle(.plain)
+            .navigationTitle("目录 · \(chapters.count) \(isComic ? "话" : "章")")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("关闭") { showCatalog = false }
+                }
+            }
         }
     }
 
@@ -324,9 +394,22 @@ struct OnlineDetailView: View {
         return SourceImportService(repo: env.sources).target(from: record)
     }
 
+    private func startReading(chapter: Int?) {
+        guard !isOpening, !isAdding, !chapters.isEmpty else { return }
+        pendingChapter = chapter
+        if shelfBook != nil {
+            showReader = true
+            return
+        }
+        // 没加书架也可以直接读：先把书准备好，再打开对应章节。
+        isOpening = true
+        addToShelf()
+    }
+
     private func addToShelf() {
         guard let source = resolveSource() else {
             errorMessage = "这本书所属的书源已被删除或关闭。"
+            isOpening = false
             return
         }
         isAdding = true
@@ -335,7 +418,8 @@ struct OnlineDetailView: View {
                 let service = OnlineBookService(
                     client: env.sourceClient,
                     library: OnlineLibrary(paths: env.paths),
-                    venera: env.veneraRuntime
+                    venera: env.veneraRuntime,
+                    paths: env.paths
                 )
                 var target = detail
                 if target.bookUrl.isEmpty { target.bookUrl = online.bookUrl }
@@ -350,13 +434,20 @@ struct OnlineDetailView: View {
                 }
                 try env.books.insert(bundle.book)
                 await MainActor.run {
+                    let shouldOpen = isOpening
                     shelfBook = bundle.book
                     isAdding = false
-                    showToast("已加入书架")
+                    isOpening = false
+                    if shouldOpen {
+                        showReader = true
+                    } else {
+                        showToast("已加入书架")
+                    }
                 }
             } catch {
                 await MainActor.run {
                     isAdding = false
+                    isOpening = false
                     errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 }
             }

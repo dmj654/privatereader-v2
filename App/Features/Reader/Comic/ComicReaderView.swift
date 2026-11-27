@@ -81,10 +81,9 @@ struct ComicReaderView: View {
                         ComicTopBar(
                             title: book.title,
                             subtitle: pages.isEmpty ? "" : "共 \(pages.count) 页 · 第 \(index + 1) 页",
-                            bookmarked: bookmarked,
                             onBack: { dismiss() },
                             onCatalog: { showCatalog = true },
-                            onBookmark: toggleBookmark,
+                            onComments: nil,
                             onSettings: { showDisplay = true }
                         )
                         Spacer()

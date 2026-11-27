@@ -97,8 +97,44 @@ final class VeneraRuntimeTests: XCTestCase {
         XCTAssertEqual(sections[1].books.count, 2)
     }
 
-    func testConvertAndHtmlBridge() async throws {
+    func testChapterCommentsThroughJavaScriptCore() async throws {
         let runtime = VeneraRuntime()
+        let script = """
+        class Probe extends ComicSource {
+            name = "Probe"
+            key = "probe"
+            version = "1.0"
+            comic = {
+                loadChapterComments: async (comicId, epId, page) => ({
+                    comments: [{
+                        userName: "读者甲",
+                        avatar: "https://example.com/a.jpg",
+                        content: "这话很好看 (" + comicId + ":" + epId + " 第" + page + "页)",
+                        time: "2026-11-27",
+                        replyCount: 3,
+                        id: "c1"
+                    }],
+                    maxPage: 2
+                })
+            }
+        }
+        """
+        let src = source(script)
+
+        let result = try await runtime.chapterComments(
+            source: src,
+            comicId: "comic-1",
+            epId: "ep-1",
+            page: 1
+        )
+        XCTAssertEqual(result.maxPage, 2)
+        XCTAssertEqual(result.comments.count, 1)
+        XCTAssertEqual(result.comments[0].userName, "读者甲")
+        XCTAssertEqual(result.comments[0].content, "这话很好看 (comic-1:ep-1 第1页)")
+        XCTAssertEqual(result.comments[0].replyCount, 3)
+    }
+
+    func testConvertAndHtmlBridge() async throws {        let runtime = VeneraRuntime()
         let script = """
         class Probe extends ComicSource {
             name = "Probe"

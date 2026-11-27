@@ -19,14 +19,33 @@ public actor OnlineBookService {
     private let client: SourceClient
     private let venera: VeneraRuntime
     private let library: OnlineLibrary
+    private let paths: SandboxPaths?
 
-    public init(client: SourceClient, library: OnlineLibrary, venera: VeneraRuntime = VeneraRuntime()) {
+    public init(client: SourceClient,
+                library: OnlineLibrary,
+                venera: VeneraRuntime = VeneraRuntime(),
+                paths: SandboxPaths? = nil) {
         self.client = client
         self.venera = venera
         self.library = library
+        self.paths = paths
     }
 
     // MARK: 加入书架
+
+    private func downloadCover(urlString: String,
+                               baseURL: String?,
+                               headers: [String: String],
+                               bookID: String) async -> String? {
+        guard let paths else { return nil }
+        return await OnlineCoverStore.download(
+            urlString: urlString,
+            baseURL: baseURL,
+            headers: headers,
+            bookID: bookID,
+            paths: paths
+        )
+    }
 
     public func prepare(_ online: OnlineBook, source: LegadoSource) async throws -> OnlineBookBundle {
         var detail = online
@@ -34,11 +53,16 @@ public actor OnlineBookService {
         if let enriched = try? await client.bookInfo(source: source, book: online) {
             detail = enriched
         }
+        if detail.coverUrl.isEmpty { detail.coverUrl = online.coverUrl }
 
         let toc = try await client.chapters(source: source, book: detail)
         guard !toc.isEmpty else { throw SourceError.emptyRule("目录是空的") }
 
         let bookId = UUID().uuidString
+        let coverPath = await downloadCover(urlString: detail.coverUrl,
+                                            baseURL: source.url,
+                                            headers: client.imageHeaders(source: source),
+                                            bookID: bookId)
         let manifest = OnlineManifest(
             bookId: bookId,
             sourceId: source.id,
@@ -59,7 +83,7 @@ public actor OnlineBookService {
             origin: .remote,
             title: detail.name,
             author: detail.author.isEmpty ? nil : detail.author,
-            coverPath: nil,
+            coverPath: coverPath,
             filePath: relativePath,
             sourceId: source.id,
             sourceBookId: detail.bookUrl,
@@ -118,6 +142,10 @@ public actor OnlineBookService {
         guard !detail.chapters.isEmpty else { throw SourceError.emptyRule("目录是空的") }
 
         let bookId = UUID().uuidString
+        let coverPath = await downloadCover(urlString: detail.coverUrl,
+                                            baseURL: nil,
+                                            headers: runtime.imageHeaders,
+                                            bookID: bookId)
         let manifest = OnlineManifest(
             bookId: bookId,
             sourceId: source.id,
@@ -137,7 +165,7 @@ public actor OnlineBookService {
             origin: .remote,
             title: detail.title,
             author: detail.author.isEmpty ? nil : detail.author,
-            coverPath: nil,
+            coverPath: coverPath,
             filePath: relativePath,
             sourceId: source.id,
             sourceBookId: detail.comicId,

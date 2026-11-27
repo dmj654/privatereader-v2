@@ -282,3 +282,39 @@ public struct VeneraDetail: Equatable, Sendable {
         self.lastChapter = lastChapter
     }
 }
+
+// MARK: - 评论
+
+public struct VeneraComment: Identifiable, Equatable, Sendable {
+    public var id: String
+    public var userName: String
+    public var avatar: String
+    public var content: String
+    public var time: String
+    public var replyCount: Int?
+
+    public init(id: String,
+                userName: String,
+                avatar: String = "",
+                content: String,
+                time: String = "",
+                replyCount: Int? = nil) {
+        self.id = id
+        self.userName = userName
+        self.avatar = avatar
+        self.content = content
+        self.time = time
+        self.replyCount = replyCount
+    }
+}
+
+public struct VeneraCommentPage: Equatable, Sendable {
+    public var comments: [VeneraComment]
+    public var maxPage: Int
+
+    public init(comments: [VeneraComment] = [], maxPage: Int = 1) {
+        self.comments = comments
+        self.maxPage = maxPage
+    }
+}
+

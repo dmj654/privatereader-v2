@@ -23,6 +23,7 @@ struct OnlineComicView: View {
     @State private var showBars = true
     @State private var showCatalog = false
     @State private var showSettings = false
+    @State private var showComments = false
     @State private var bookmarked = false
     @State private var toast: String?
     @State private var autoPage = 0
@@ -66,10 +67,9 @@ struct OnlineComicView: View {
                     ComicTopBar(
                         title: book.title,
                         subtitle: currentSubtitle,
-                        bookmarked: bookmarked,
                         onBack: { dismiss() },
                         onCatalog: { showCatalog = true },
-                        onBookmark: toggleBookmark,
+                        onComments: { showComments = true },
                         onSettings: { showSettings = true }
                     )
                     Spacer()
@@ -118,6 +118,21 @@ struct OnlineComicView: View {
         .task { loadInitial() }
         .sheet(isPresented: $showCatalog) {
             catalogSheet.presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showComments) {
+            if chapters.indices.contains(chapterIndex) {
+                ComicCommentsSheet(
+                    comicId: manifest?.bookUrl ?? "",
+                    chapter: chapters[chapterIndex],
+                    source: source,
+                    runtime: env.veneraRuntime
+                )
+                .presentationDetents([.medium, .large])
+            } else {
+                EmptyStateView(symbol: "text.bubble",
+                               title: "评论不可用",
+                               message: "当前章节还没有加载完成。")
+            }
         }
         .sheet(isPresented: $showSettings) {
             onlineSettings.presentationDetents([.height(240)])

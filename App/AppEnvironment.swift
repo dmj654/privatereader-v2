@@ -66,4 +66,43 @@ final class AppEnvironment: ObservableObject {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         self.importLog.append("--- 启动 v\(version)，沙盒 \(paths.root.path) ---")
     }
+
+    /// 老版本加入书架时没有落封面。书架出现时按需补一次，不阻塞列表。
+    func backfillCover(for book: Book) async -> Book? {
+        guard book.origin == .remote, book.coverPath == nil else { return nil }
+        guard let manifest = try? onlineReading.manifest(for: book),
+              !manifest.coverUrl.isEmpty,
+              let record = try? sources.fetch(id: manifest.sourceId),
+              let target = SourceImportService(repo: sources).target(from: record) else {
+            return nil
+        }
+
+        let headers: [String: String]
+        let baseURL: String?
+        switch target {
+        case .legado(let source):
+            headers = sourceClient.imageHeaders(source: source)
+            baseURL = source.url
+        case .venera:
+            headers = veneraRuntime.imageHeaders
+            baseURL = nil
+        }
+
+        guard let relative = await OnlineCoverStore.download(
+            urlString: manifest.coverUrl,
+            baseURL: baseURL,
+            headers: headers,
+            bookID: book.id,
+            paths: paths
+        ) else { return nil }
+
+        var updated = book
+        updated.coverPath = relative
+        do {
+            try books.upsert(updated)
+        } catch {
+            return nil
+        }
+        return updated
+    }
 }
