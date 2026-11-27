@@ -119,7 +119,8 @@ struct ComicDisplaySheet: View {
     @Binding var mode: ComicMode
     @Binding var fitRaw: String
     @Binding var backgroundRaw: String
-    @Binding var autoSeconds: Int
+    @Binding var autoPageSeconds: Int
+    @Binding var autoScrollSpeed: Double
 
     @Environment(\.dismiss) private var dismiss
 
@@ -191,24 +192,42 @@ struct ComicDisplaySheet: View {
                         }
 
                         Card {
-                            VStack(alignment: .leading, spacing: 8) {
-                                label("自动翻页")
+                            VStack(alignment: .leading, spacing: 10) {
+                                label("自动阅读")
                                 HStack(spacing: 8) {
-                                    ForEach([0, 3, 5, 10], id: \.self) { seconds in
+                                    ForEach([3, 5, 10], id: \.self) { seconds in
                                         Button {
-                                            autoSeconds = seconds
+                                            autoPageSeconds = seconds
                                         } label: {
-                                            Text(seconds == 0 ? "关" : "\(seconds)s")
-                                                .font(.system(size: 12, weight: autoSeconds == seconds ? .semibold : .regular))
-                                                .foregroundStyle(autoSeconds == seconds ? .white : Palette.ink2)
+                                            Text("\(seconds)s/页")
+                                                .font(.system(size: 12, weight: autoPageSeconds == seconds ? .semibold : .regular))
+                                                .foregroundStyle(autoPageSeconds == seconds ? .white : Palette.ink2)
                                                 .frame(maxWidth: .infinity)
                                                 .frame(height: 32)
-                                                .background(autoSeconds == seconds ? Palette.accent : Palette.surfaceAlt)
+                                                .background(autoPageSeconds == seconds ? Palette.accent : Palette.surfaceAlt)
                                                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                                         }
                                         .buttonStyle(.plain)
                                     }
                                 }
+
+                                HStack(spacing: 8) {
+                                    Text("滚动速度")
+                                        .font(.system(size: 11.5))
+                                        .foregroundStyle(Palette.ink3)
+                                    Text("慢")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(Palette.ink3)
+                                    Slider(value: $autoScrollSpeed, in: 1...8, step: 1)
+                                        .tint(Palette.accent)
+                                    Text("快")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(Palette.ink3)
+                                }
+
+                                Text("自动按钮只开启 / 停止；单页模式按翻页间隔，条漫模式按滚动速度。")
+                                    .font(.system(size: 10.5))
+                                    .foregroundStyle(Palette.ink3)
                             }
                         }
                     }

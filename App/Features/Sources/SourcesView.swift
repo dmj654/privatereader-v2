@@ -20,7 +20,11 @@ struct SourcesView: View {
     @State private var kindFilter: SourceKind = .novel
     @State private var filter: HealthFilter = .all
     @State private var checkedCount = 0
+    @State private var activeBatchTotal = 0
     @State private var checkTask: Task<Void, Never>?
+    @State private var selectionMode = false
+    @State private var selectedIDs: Set<String> = []
+    @State private var confirmDeleteSelected = false
     /// 上次检测写进数据库的结论：进页面后仍能看到失败/超时，而不是只剩本次内存状态。
     @State private var persistedFailedIDs: Set<String> = []
     @State private var persistedTimeoutIDs: Set<String> = []
@@ -99,14 +103,27 @@ struct SourcesView: View {
         .navigationTitle(kindFilter.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingImport = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .semibold))
+            ToolbarItem(placement: .topBarLeading) {
+                if selectionMode {
+                    Button("完成") { exitSelection() }
+                        .font(.system(size: 13.5, weight: .medium))
                 }
-                .accessibilityLabel("导入\(kindFilter.title)")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                if selectionMode {
+                    Button(selectedIDs.count == filteredSources.count && !filteredSources.isEmpty ? "取消全选" : "全选") {
+                        toggleSelectAll()
+                    }
+                    .font(.system(size: 13.5, weight: .medium))
+                } else {
+                    Button {
+                        showingImport = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .accessibilityLabel("导入\(kindFilter.title)")
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -138,6 +155,11 @@ struct SourcesView: View {
             Button("删除失败源", role: .destructive) { deleteFailed() }
         } message: {
             Text("只删当前这一类里明确失败的源（404、解析错误、脚本报错）。超时的源会保留，可以稍后再测。")
+        }
+        .confirmationDialog("删除选中的 \(selectedIDs.count) 条\(kindFilter.title)？", isPresented: $confirmDeleteSelected, titleVisibility: .visible) {
+            Button("删除选中项", role: .destructive) { deleteSelected() }
+        } message: {
+            Text("只删当前分类里勾选的源，书架里的书不受影响。")
         }
         .onAppear(perform: reload)
     }
@@ -186,6 +208,7 @@ struct SourcesView: View {
                 let count = sources.filter { kind.matches($0.type) }.count
                 Button {
                     kindFilter = kind
+                    if selectionMode { selectedIDs.removeAll() }
                 } label: {
                     Text("\(kind.title) \(count)")
                         .font(.system(size: 12.5, weight: kindFilter == kind ? .semibold : .regular))
@@ -261,6 +284,7 @@ struct SourcesView: View {
             Spacer(minLength: 0)
             Menu {
                 Button("测一下启用的\(kindFilter.title)") { checkAll() }
+                Button("批量管理（勾选后测试 / 开关 / 删除）") { enterSelection() }
                 Button("禁用全部失败的\(kindFilter.title)") { disableFailed() }
                     .disabled(failedSources.isEmpty)
                 Button("删除全部失败的\(kindFilter.title)", role: .destructive) { confirmDeleteFailed = true }
@@ -300,6 +324,20 @@ struct SourcesView: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
+                if selectionMode {
+                    Button {
+                        toggleSelection(source.id)
+                    } label: {
+                        Image(systemName: selectedIDs.contains(source.id)
+                              ? "checkmark.circle.fill"
+                              : "circle")
+                            .font(.system(size: 19, weight: .medium))
+                            .foregroundStyle(selectedIDs.contains(source.id) ? Palette.accent : Palette.ink3)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                }
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(source.name)
                         .font(.system(size: 14.5, weight: .medium))
@@ -393,11 +431,28 @@ struct SourcesView: View {
     }
 
     private var bottomBar: some View {
+        Group {
+            if selectionMode {
+                selectionBar
+            } else {
+                normalBar
+            }
+        }
+        .padding(.horizontal, Spacing.l)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Palette.line).frame(height: 0.5)
+        }
+    }
+
+    private var normalBar: some View {
         HStack(spacing: 10) {
             Button {
                 checkAll()
             } label: {
-                Text(isCheckingAll ? "停止检测 \(checkedCount)/\(kindSources.filter(\.enabled).count)" : "测一下全部")
+                Text(isCheckingAll ? "停止检测 \(checkedCount)/\(activeBatchTotal)" : "测一下全部")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Palette.ink)
                     .frame(maxWidth: .infinity)
@@ -425,12 +480,50 @@ struct SourcesView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, Spacing.l)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Palette.line).frame(height: 0.5)
+    }
+
+    private var selectionBar: some View {
+        HStack(spacing: 9) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(selectedIDs.isEmpty ? "未选择" : "已选 \(selectedIDs.count) 条")
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(Palette.ink)
+                Text("\(kindFilter.title) · 共 \(kindSources.count) 条")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(Palette.ink3)
+            }
+            .frame(width: 96, alignment: .leading)
+
+            Button {
+                checkSelected()
+            } label: {
+                Text(isCheckingAll ? "\(checkedCount)/\(activeBatchTotal)" : "测所选")
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(selectedIDs.isEmpty ? Palette.ink3 : Palette.accent)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 40)
+                    .background(Palette.accentSoft.opacity(selectedIDs.isEmpty ? 0.4 : 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(selectedIDs.isEmpty || isCheckingAll)
+
+            Menu {
+                Button("启用所选") { setEnabledSelected(true) }
+                    .disabled(selectedIDs.isEmpty)
+                Button("关闭所选") { setEnabledSelected(false) }
+                    .disabled(selectedIDs.isEmpty)
+                Divider()
+                Button("删除所选", role: .destructive) { confirmDeleteSelected = true }
+                    .disabled(selectedIDs.isEmpty)
+            } label: {
+                Text("批量操作")
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 92, height: 40)
+                    .background(Palette.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
         }
     }
 
@@ -530,6 +623,59 @@ struct SourcesView: View {
         }
     }
 
+    private func enterSelection() {
+        selectionMode = true
+        selectedIDs.removeAll()
+    }
+
+    private func exitSelection() {
+        selectionMode = false
+        selectedIDs.removeAll()
+    }
+
+    private func toggleSelection(_ id: String) {
+        if selectedIDs.contains(id) {
+            selectedIDs.remove(id)
+        } else {
+            selectedIDs.insert(id)
+        }
+    }
+
+    private func toggleSelectAll() {
+        let visible = Set(filteredSources.map(\.id))
+        if visible.isSubset(of: selectedIDs) {
+            selectedIDs.subtract(visible)
+        } else {
+            selectedIDs.formUnion(visible)
+        }
+    }
+
+    private func setEnabledSelected(_ enabled: Bool) {
+        let ids = kindSources.filter { selectedIDs.contains($0.id) }.map(\.id)
+        guard !ids.isEmpty else { return }
+        do {
+            for id in ids {
+                try env.sources.setEnabled(id: id, enabled: enabled)
+            }
+            reload()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func deleteSelected() {
+        let ids = kindSources.filter { selectedIDs.contains($0.id) }.map(\.id)
+        guard !ids.isEmpty else { return }
+        do {
+            try env.sources.delete(ids: ids)
+            ids.forEach { health[$0] = nil }
+            selectedIDs.subtract(ids)
+            reload()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func check(_ source: BookSource) {
         guard !checking.contains(source.id) else { return }
         checking.insert(source.id)
@@ -556,20 +702,31 @@ struct SourcesView: View {
     }
 
     private func checkAll() {
+        startBatch(kindSources.filter(\.enabled))
+    }
+
+    private func checkSelected() {
+        let targets = kindSources.filter { selectedIDs.contains($0.id) && $0.enabled }
+        startBatch(targets)
+    }
+
+    private func startBatch(_ targets: [BookSource]) {
         // 检测中再点 = 停止
         if isCheckingAll {
             checkTask?.cancel()
             checkTask = nil
             isCheckingAll = false
             checking.removeAll()
+            checkedCount = 0
+            activeBatchTotal = 0
             return
         }
 
-        let targets = kindSources.filter(\.enabled)
         guard !targets.isEmpty else { return }
 
         isCheckingAll = true
         checkedCount = 0
+        activeBatchTotal = targets.count
         checking = Set(targets.map(\.id))
 
         let byID = Dictionary(uniqueKeysWithValues: targets.map { ($0.id, $0) })

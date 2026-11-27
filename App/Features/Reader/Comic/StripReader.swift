@@ -11,12 +11,24 @@ struct StripReader: View {
     let store: ComicPageStore?
     let pages: [URL]
     let background: Color
+    var autoRunning: Bool = false
+    var pointsPerSecond: CGFloat = 0
+    var resetToken: Int = 0
+    var onReachBottom: (() -> Void)?
     let onTap: () -> Void
 
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    AutoScrollDriver(
+                        isRunning: autoRunning,
+                        pointsPerSecond: pointsPerSecond,
+                        resetToken: resetToken,
+                        onReachBottom: onReachBottom
+                    )
+                    .frame(width: 1, height: 1)
+
                     ForEach(Array(pages.enumerated()), id: \.offset) { index, url in
                         StripPage(url: url,
                                   index: index,

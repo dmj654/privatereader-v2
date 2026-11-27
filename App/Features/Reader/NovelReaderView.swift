@@ -10,6 +10,11 @@ private struct PendingFeature: Identifiable {
     let detail: String
 }
 
+private struct SelectionRequest: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
 /// 阅读器里的弹出层，合成一个状态机，避免多个 sheet 互相抢占。
 private enum ReaderSheet: Identifiable {
     case catalog
@@ -33,6 +38,14 @@ private enum ReaderSheet: Identifiable {
 private enum ReaderMode: Equatable {
     case reading
     case listening
+}
+
+enum NovelLayoutMode: String, CaseIterable, Identifiable {
+    case paged
+    case scroll
+
+    var id: String { rawValue }
+    var title: String { self == .paged ? "翻页" : "滚动" }
 }
 
 struct NovelReaderView: View {
@@ -61,7 +74,16 @@ struct NovelReaderView: View {
     /// 自动阅读：3 / 5 / 10 秒翻一页，跨章继续，到全书末尾停。
     @State private var autoTask: Task<Void, Never>?
     @State private var autoToast: String?
-    @AppStorage("novel.autoSeconds") private var autoSeconds = 0
+    @State private var autoRunning = false
+    @AppStorage("novel.autoPageSeconds") private var autoPageSeconds = 5
+    @AppStorage("novel.autoScrollSpeed") private var autoScrollSpeed = 3.0
+    @AppStorage("novel.layoutMode") private var layoutRaw = NovelLayoutMode.paged.rawValue
+    @State private var scrollResetToken = 0
+
+    /// 长按选字后的两个入口。
+    @State private var explainRequest: SelectionRequest?
+    @State private var purifierRequest: SelectionRequest?
+    @StateObject private var purifierStore = PurifierRuleStore.shared
 
     /// 当前是阅读还是听书。听书有自己的一套菜单和九宫格。
     @State private var mode: ReaderMode = .reading
@@ -117,20 +139,21 @@ struct NovelReaderView: View {
                         }
                     }
                 } else {
-                    pageArea(size: proxy.size)
-                        .overlay {
-                            if model.isContentLoading {
-                                VStack(spacing: 8) {
-                                    ProgressView().tint(Palette.accent)
-                                    Text("正在加载本章…")
-                                        .font(Typo.micro)
-                                        .foregroundStyle(model.theme.textColor.opacity(0.5))
+                    if layoutMode == .scroll {
+                        scrollArea(size: proxy.size)
+                            .overlay {
+                                if model.isContentLoading {
+                                    loadingBadge
                                 }
-                                .padding(18)
-                                .background(model.theme.background.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             }
-                        }
+                    } else {
+                        pageArea(size: proxy.size)
+                            .overlay {
+                                if model.isContentLoading {
+                                    loadingBadge
+                                }
+                            }
+                    }
                 }
 
                 if model.isMenuVisible && !editingZones {
@@ -189,7 +212,17 @@ struct NovelReaderView: View {
             .onAppear { viewWidth = proxy.size.width }
             .onChange(of: proxy.size) { viewWidth = $0.width }
             .onChange(of: model.pageIndex) { _ in scheduleSpeechResumeCheck() }
-            .onChange(of: model.chapterIndex) { _ in scheduleSpeechResumeCheck() }
+            .onChange(of: model.chapterIndex) { _ in
+                scrollResetToken += 1
+                scheduleSpeechResumeCheck()
+            }
+            .onChange(of: layoutRaw) { _ in
+                stopAutoRead()
+                scrollResetToken += 1
+                if autoRunning, layoutMode == .paged {
+                    restartAutoRead()
+                }
+            }
         }
         .navigationBarHidden(true)
         .preferredColorScheme(model.theme.chromeStyle)
@@ -206,7 +239,7 @@ struct NovelReaderView: View {
                 // 进后台/锁屏前把正在播放的信息再写一遍，避免系统丢掉锁屏卡片
                 speech.refreshNowPlaying()
                 stopAutoRead()
-            } else if autoSeconds > 0 {
+            } else if autoRunning {
                 restartAutoRead()
             }
         }
@@ -292,6 +325,17 @@ struct NovelReaderView: View {
                 .presentationDragIndicator(.visible)
             }
         }
+        .sheet(item: $explainRequest) { request in
+            DictionarySheet(term: request.text)
+        }
+        .sheet(item: $purifierRequest) { request in
+            PurifierRuleEditor(selectedText: request.text,
+                               bookId: model.book.id) {
+                configurePurifier(for: model.book)
+                showToast("净化规则已保存，本章已重新排版")
+            }
+            .presentationDetents([.medium, .large])
+        }
         .confirmationDialog("定时停止", isPresented: $showingTimerMenu, titleVisibility: .visible) {
             ForEach([5, 15, 30, 60], id: \.self) { minutes in
                 Button("\(minutes) 分钟后停止") { scheduleSleepTimer(minutes: minutes) }
@@ -327,19 +371,16 @@ struct NovelReaderView: View {
             ZStack {
                 ZStack {
                     // 正在读的这一页
-                    pageLayer(model.currentPageText)
+                    pageLayer(model.currentPageText, interactive: true)
                         .offset(x: contentOffset)
 
                     // 下一页提前画好，跟着一起动，中间不会露白
                     if let incoming = incomingText {
-                        pageLayer(incoming)
+                        pageLayer(incoming, interactive: false)
                             .offset(x: contentOffset + CGFloat(incomingDirection) * max(viewWidth, 1))
                     }
                 }
                 .opacity(contentOpacity)
-
-                // 点击区固定在屏幕上
-                tapGrid
             }
             .simultaneousGesture(swipeGesture)
             .onChange(of: model.style) { _ in model.repaginate() }
@@ -395,14 +436,41 @@ struct NovelReaderView: View {
         .frame(height: 25)
     }
 
-    private func pageLayer(_ text: NSAttributedString) -> some View {
+    private func pageLayer(_ text: NSAttributedString, interactive: Bool) -> some View {
         GeometryReader { content in
-            ReaderTextView(
-                attributedText: text,
-                background: UIColor(model.theme.background)
-            )
-            .padding(.horizontal, model.style.marginHorizontal)
-            .padding(.top, model.style.marginTop)
+            ZStack {
+                // 页边距里的点击落在这里；正文区域由 UITextView 自己接收，
+                // 这样长按选字不会被 SwiftUI 的透明九宫格抢走。
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        SpatialTapGesture().onEnded { value in
+                            performTap(at: value.location, size: content.size)
+                        }
+                    )
+
+                ReaderTextView(
+                    attributedText: text,
+                    background: UIColor(model.theme.background),
+                    textInsets: .zero,
+                    isInteractive: interactive,
+                    onTapAt: { point, _ in
+                        performTap(
+                            at: CGPoint(x: point.x + model.style.marginHorizontal,
+                                        y: point.y + model.style.marginTop),
+                            size: content.size
+                        )
+                    },
+                    onExplain: { text in
+                        explainRequest = SelectionRequest(text: text)
+                    },
+                    onPurify: { text in
+                        purifierRequest = SelectionRequest(text: text)
+                    }
+                )
+                .padding(.horizontal, model.style.marginHorizontal)
+                .padding(.top, model.style.marginTop)
+            }
             .onAppear { model.repaginateIfNeeded(size: pageInnerSize(content.size)) }
             .onChange(of: content.size) { newValue in
                 model.repaginateIfNeeded(size: pageInnerSize(newValue))
@@ -415,25 +483,79 @@ struct NovelReaderView: View {
                height: max(size.height - 8, 40))
     }
 
-    // MARK: 点击区域（九宫格）
+    private var loadingBadge: some View {
+        VStack(spacing: 8) {
+            ProgressView().tint(Palette.accent)
+            Text("正在加载本章…")
+                .font(Typo.micro)
+                .foregroundStyle(model.theme.textColor.opacity(0.5))
+        }
+        .padding(18)
+        .background(model.theme.background.opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
 
-    private var tapGrid: some View {
+    // MARK: 滚动模式
+
+    private var layoutMode: NovelLayoutMode {
+        NovelLayoutMode(rawValue: layoutRaw) ?? .paged
+    }
+
+    private var scrollPointsPerSecond: CGFloat {
+        CGFloat(18 + max(1, autoScrollSpeed) * 10)
+    }
+
+    private func scrollArea(size: CGSize) -> some View {
         VStack(spacing: 0) {
-            ForEach(0..<3, id: \.self) { row in
-                HStack(spacing: 0) {
-                    ForEach(0..<3, id: \.self) { column in
-                        tapZone(TapZone.grid[row][column])
+            headerRow
+
+            ReaderScrollTextView(
+                attributedText: model.fullChapterText ?? NSAttributedString(string: ""),
+                background: UIColor(model.theme.background),
+                textInsets: UIEdgeInsets(top: model.style.marginTop,
+                                         left: model.style.marginHorizontal,
+                                         bottom: 28,
+                                         right: model.style.marginHorizontal),
+                autoRunning: autoRunning,
+                pointsPerSecond: scrollPointsPerSecond,
+                resetToken: scrollResetToken,
+                onTap: {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        model.isMenuVisible.toggle()
                     }
-                }
-            }
+                },
+                onExplain: { text in
+                    explainRequest = SelectionRequest(text: text)
+                },
+                onPurify: { text in
+                    purifierRequest = SelectionRequest(text: text)
+                },
+                onReachBottom: handleScrollReachedBottom
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            footerRow
         }
     }
 
-    private func tapZone(_ zone: TapZone) -> some View {
-        Rectangle()
-            .fill(Color.clear)
-            .contentShape(Rectangle())
-            .onTapGesture { perform(activeZones[zone]) }
+    private func handleScrollReachedBottom() {
+        guard autoRunning else { return }
+        guard model.chapterIndex + 1 < model.chapters.count else {
+            autoRunning = false
+            showToast("已到全书末尾，自动阅读已停止")
+            return
+        }
+        model.jump(toChapter: model.chapterIndex + 1)
+        scrollResetToken += 1
+    }
+
+    // MARK: 点击区域（九宫格）
+
+    private func performTap(at point: CGPoint, size: CGSize) {
+        guard size.width > 0, size.height > 0 else { return }
+        let column = min(max(Int(point.x / (size.width / 3)), 0), 2)
+        let row = min(max(Int(point.y / (size.height / 3)), 0), 2)
+        perform(activeZones[TapZone.grid[row][column]])
     }
 
     /// 听书用自己的九宫格：同样是九个格子，但动作是"上一句 / 下一句 / 暂停"这一套。
@@ -786,7 +908,7 @@ struct NovelReaderView: View {
 
     private func startSpeech() {
         stopAutoRead()
-        autoSeconds = 0
+        autoRunning = false
         guard let text = model.prepareSpeech() else {
             pending = PendingFeature(
                 title: "这一章没有可朗读的文字",
@@ -998,44 +1120,43 @@ struct NovelReaderView: View {
 
     // MARK: 自动阅读
 
-    private func cycleAutoRead() {
-        switch autoSeconds {
-        case 0: autoSeconds = 3
-        case 3: autoSeconds = 5
-        case 5: autoSeconds = 10
-        default: autoSeconds = 0
+    private func toggleAutoRead() {
+        if autoRunning {
+            autoRunning = false
+            stopAutoRead()
+            showToast("自动阅读已停止")
+            return
         }
-        if autoSeconds > 0 {
-            // 开启后先把菜单收起来，用户马上能看到自动翻页，而不是盯着菜单等。
-            if model.isMenuVisible {
-                withAnimation(.easeInOut(duration: 0.18)) { model.isMenuVisible = false }
-            }
-            showToast("自动阅读 \(autoSeconds) 秒/页")
+
+        autoRunning = true
+        if model.isMenuVisible {
+            withAnimation(.easeInOut(duration: 0.18)) { model.isMenuVisible = false }
+        }
+        if layoutMode == .paged {
+            showToast("自动阅读已开启 · \(autoPageSeconds) 秒/页")
             restartAutoRead()
         } else {
-            stopAutoRead()
-            showToast("自动阅读已关闭")
+            showToast("自动阅读已开启 · 滚动速度在设置里调")
         }
     }
 
     private func restartAutoRead() {
         autoTask?.cancel()
-        guard autoSeconds > 0, mode == .reading, !model.isLoading else { return }
+        guard autoRunning, layoutMode == .paged, mode == .reading, !model.isLoading else { return }
 
         autoTask = Task { @MainActor in
             while !Task.isCancelled {
-                let seconds = autoSeconds
-                guard seconds > 0 else { return }
+                let seconds = autoPageSeconds
+                guard autoRunning, seconds > 0 else { return }
                 try? await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
                 guard !Task.isCancelled else { return }
-                guard mode == .reading else { return }
+                guard autoRunning, mode == .reading else { return }
 
-                // 在线章节正在取正文：这一拍先不翻，等下一拍，避免停在空白页。
                 if model.isContentLoading { continue }
                 if model.canTurn(by: 1) {
                     model.turnPage(by: 1)
                 } else {
-                    autoSeconds = 0
+                    autoRunning = false
                     stopAutoRead()
                     showToast("已到全书末尾，自动阅读已停止")
                     return
@@ -1087,14 +1208,17 @@ struct NovelReaderView: View {
     }
 
     private func purifierRules(for book: Book) -> [String] {
-        guard book.origin == .remote,
-              let manifest = try? env.onlineReading.manifest(for: book),
-              let record = try? env.sources.fetch(id: manifest.sourceId),
-              let target = SourceImportService(repo: env.sources).target(from: record),
-              let legado = target.legadoSource else {
-            return []
+        let sourceRules: [String]
+        if book.origin == .remote,
+           let manifest = try? env.onlineReading.manifest(for: book),
+           let record = try? env.sources.fetch(id: manifest.sourceId),
+           let target = SourceImportService(repo: env.sources).target(from: record),
+           let legado = target.legadoSource {
+            sourceRules = Purifier.extractRules(from: legado.ruleContent.content)
+        } else {
+            sourceRules = []
         }
-        return Purifier.extractRules(from: legado.ruleContent.content)
+        return sourceRules + purifierStore.legadoRules(for: book.id)
     }
 
     private func scheduleSleepTimer(minutes: Int?) {
@@ -1219,13 +1343,13 @@ struct NovelReaderView: View {
                 .foregroundStyle(chromeFaint)
                 .lineLimit(1)
 
-            if autoSeconds > 0 {
+            if autoRunning {
                 Button {
-                    autoSeconds = 0
+                    autoRunning = false
                     stopAutoRead()
                     showToast("自动阅读已停止")
                 } label: {
-                    Text("自动 \(autoSeconds)s")
+                    Text(layoutMode == .scroll ? "自动滚动" : "自动 \(autoPageSeconds)s")
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(chromeMuted)
                         .padding(.horizontal, 7)
@@ -1277,11 +1401,11 @@ struct NovelReaderView: View {
                 }
             }
             sideButton("list.bullet") { sheet = .catalog }
-            sideButton(autoSeconds == 0 ? "play.fill" : "pause.fill",
-                       highlighted: autoSeconds > 0) {
-                cycleAutoRead()
+            sideButton(autoRunning ? "pause.fill" : "play.fill",
+                       highlighted: autoRunning) {
+                toggleAutoRead()
             }
-            .accessibilityLabel(autoSeconds == 0 ? "开启自动阅读" : "关闭自动阅读")
+            .accessibilityLabel(autoRunning ? "关闭自动阅读" : "开启自动阅读")
             sideButton("headphones", highlighted: true) { startSpeech() }
         }
     }

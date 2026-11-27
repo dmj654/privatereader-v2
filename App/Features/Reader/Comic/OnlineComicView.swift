@@ -26,12 +26,12 @@ struct OnlineComicView: View {
     @State private var showComments = false
     @State private var bookmarked = false
     @State private var toast: String?
-    @State private var autoPage = 0
-    @State private var autoTask: Task<Void, Never>?
+    @State private var autoRunning = false
+    @State private var autoResetToken = 0
     @State private var isDownloading = false
     @State private var downloadText = "下载"
 
-    @AppStorage("comic.autoSeconds") private var autoSeconds = 0
+    @AppStorage("comic.autoScrollSpeed") private var autoScrollSpeed = 3.0
     @AppStorage("comic.online.background") private var backgroundRaw = "canvas"
 
     private var chapters: [OnlineChapter] { manifest?.chapters ?? [] }
@@ -91,8 +91,8 @@ struct OnlineComicView: View {
                         onDownload: downloadChapter,
                         shareURL: sourceURL,
                         shareText: book.title,
-                        autoSeconds: autoSeconds,
-                        onAuto: cycleAuto
+                        autoOn: autoRunning,
+                        onAuto: toggleAuto
                     )
                 }
                 .transition(.opacity)
@@ -135,9 +135,11 @@ struct OnlineComicView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            onlineSettings.presentationDetents([.height(240)])
+            onlineSettings.presentationDetents([.height(360)])
         }
-        .onDisappear { autoTask?.cancel() }
+        .onDisappear {
+            autoRunning = false
+        }
     }
 
     // MARK: 页面
@@ -146,6 +148,14 @@ struct OnlineComicView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    AutoScrollDriver(
+                        isRunning: autoRunning,
+                        pointsPerSecond: autoPointsPerSecond,
+                        resetToken: autoResetToken,
+                        onReachBottom: handleAutoBottom
+                    )
+                    .frame(width: 1, height: 1)
+
                     ForEach(Array(pages.enumerated()), id: \.offset) { index, url in
                         OnlineComicPage(urlString: url,
                                         headers: headers,
@@ -169,10 +179,8 @@ struct OnlineComicView: View {
                     withAnimation(.easeInOut(duration: 0.16)) { showBars.toggle() }
                 }
             )
-            .onChange(of: autoPage) { page in
-                withAnimation(.easeOut(duration: 0.25)) {
-                    proxy.scrollTo(page, anchor: .top)
-                }
+            .onChange(of: chapterIndex) { _ in
+                proxy.scrollTo(0, anchor: .top)
             }
         }
     }
@@ -242,6 +250,25 @@ struct OnlineComicView: View {
                         .buttonStyle(.plain)
                     }
                 }
+                Text("自动阅读")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Palette.ink2)
+                HStack(spacing: 8) {
+                    Text("滚动速度")
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Palette.ink3)
+                    Text("慢")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Palette.ink3)
+                    Slider(value: $autoScrollSpeed, in: 1...8, step: 1)
+                        .tint(Palette.accent)
+                    Text("快")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Palette.ink3)
+                }
+                Text("底部自动按钮只开启 / 停止，速度在这里调。")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Palette.ink3)
                 Spacer()
             }
             .padding(Spacing.l)
@@ -316,7 +343,7 @@ struct OnlineComicView: View {
         isLoading = true
         errorMessage = nil
         pages = []
-        autoPage = 0
+        autoResetToken += 1
         UserDefaults.standard.set(chapterIndex, forKey: chapterKey)
         refreshBookmark()
 
@@ -346,7 +373,7 @@ struct OnlineComicView: View {
                 await MainActor.run {
                     pages = urls
                     isLoading = false
-                    restartAuto()
+                    autoResetToken += 1
                 }
             } catch {
                 await MainActor.run {
@@ -396,44 +423,28 @@ struct OnlineComicView: View {
         Haptics.selection()
     }
 
-    private func cycleAuto() {
-        switch autoSeconds {
-        case 0: autoSeconds = 5
-        case 5: autoSeconds = 10
-        case 10: autoSeconds = 15
-        default: autoSeconds = 0
-        }
-        restartAuto()
-        if autoSeconds > 0 {
-            showToast("自动翻页 \(autoSeconds) 秒/页")
+    private func toggleAuto() {
+        autoRunning.toggle()
+        if autoRunning {
+            autoResetToken += 1
+            showToast("自动滚动已开启 · 速度在设置里调")
         } else {
-            showToast("自动翻页已关闭")
+            showToast("自动滚动已停止")
         }
     }
 
-    private func restartAuto() {
-        autoTask?.cancel()
-        guard autoSeconds > 0, !pages.isEmpty else { return }
+    private var autoPointsPerSecond: CGFloat {
+        CGFloat(18 + max(1, autoScrollSpeed) * 10)
+    }
 
-        autoTask = Task { @MainActor in
-            while !Task.isCancelled {
-                let seconds = autoSeconds
-                guard seconds > 0 else { return }
-                try? await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
-                guard !Task.isCancelled else { return }
-
-                if autoPage + 1 < pages.count {
-                    autoPage += 1
-                } else if chapterIndex + 1 < chapters.count {
-                    moveChapter(1)
-                    return
-                } else {
-                    autoSeconds = 0
-                    showToast("已到最后一话，自动翻页停止")
-                    return
-                }
-            }
+    private func handleAutoBottom() {
+        guard autoRunning else { return }
+        guard chapterIndex + 1 < chapters.count else {
+            autoRunning = false
+            showToast("已到最后一话，自动滚动停止")
+            return
         }
+        moveChapter(1)
     }
 
     private func downloadChapter() {

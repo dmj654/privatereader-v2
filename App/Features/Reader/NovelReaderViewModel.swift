@@ -307,6 +307,11 @@ final class NovelReaderViewModel: ObservableObject {
         return page
     }
 
+    /// 滚动模式用整章富文本；不能拿 currentPageText，否则滚动模式只会滚一页。
+    var fullChapterText: NSAttributedString? {
+        chapterAttributed()
+    }
+
     /// 整章富文本只构建一次。分页、朗读切句、高亮都基于同一份字符串，
     /// 否则句子的偏移和页的范围会错位，高亮就会漂。
     private func chapterAttributed() -> NSAttributedString? {

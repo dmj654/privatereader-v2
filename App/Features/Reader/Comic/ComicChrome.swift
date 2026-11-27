@@ -71,7 +71,7 @@ struct ComicBottomBar: View {
     let onDownload: () -> Void
     let shareURL: URL?
     let shareText: String
-    let autoSeconds: Int
+    let autoOn: Bool
     let onAuto: () -> Void
 
     var body: some View {
@@ -114,8 +114,8 @@ struct ComicBottomBar: View {
                 action("arrow.down.to.line", downloadText, action: onDownload)
                 shareAction
                 action("clock.arrow.circlepath",
-                       autoSeconds == 0 ? "启动" : "\(autoSeconds)s",
-                       tint: autoSeconds > 0 ? Palette.accent : Palette.ink,
+                       autoOn ? "停止" : "自动",
+                       tint: autoOn ? Palette.accent : Palette.ink,
                        action: onAuto)
             }
         }

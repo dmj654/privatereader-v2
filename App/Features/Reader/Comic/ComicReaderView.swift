@@ -32,13 +32,16 @@ struct ComicReaderView: View {
     @State private var showDisplay = false
     @State private var isZoomed = false
     @State private var autoTask: Task<Void, Never>?
+    @State private var autoRunning = false
+    @State private var stripResetToken = 0
     @State private var bookmarked = false
     @State private var showCatalog = false
     @State private var toast: String?
 
     @AppStorage("comic.fit") private var fitRaw = ComicFit.height.rawValue
     @AppStorage("comic.background") private var backgroundRaw = "canvas"
-    @AppStorage("comic.autoSeconds") private var autoSeconds = 0
+    @AppStorage("comic.autoPageSeconds") private var autoPageSeconds = 5
+    @AppStorage("comic.autoScrollSpeed") private var autoScrollSpeed = 3.0
 
     private var fit: ComicFit { ComicFit(rawValue: fitRaw) ?? .height }
 
@@ -72,6 +75,10 @@ struct ComicReaderView: View {
                                 store: store,
                                 pages: pages,
                                 background: background,
+                                autoRunning: autoRunning,
+                                pointsPerSecond: stripPointsPerSecond,
+                                resetToken: stripResetToken,
+                                onReachBottom: stripReachedBottom,
                                 onTap: togglePanel)
                         .ignoresSafeArea()
                 }
@@ -106,8 +113,8 @@ struct ComicReaderView: View {
                             onDownload: { showLocalToast("本地漫画已保存在设备上") },
                             shareURL: localShareURL,
                             shareText: book.title,
-                            autoSeconds: autoSeconds,
-                            onAuto: cycleAuto
+                            autoOn: autoRunning,
+                            onAuto: toggleAuto
                         )
                     }
                     .transition(.opacity)
@@ -125,8 +132,10 @@ struct ComicReaderView: View {
         }
         .onChange(of: mode) { newValue in
             isZoomed = false
+            stripResetToken += 1
             UserDefaults.standard.set(newValue.rawValue, forKey: modeKey)
-            restartAuto()
+            stopAutoTask()
+            if autoRunning { restartAuto() }
         }
         .sheet(isPresented: $showCatalog) {
             pageCatalog
@@ -134,8 +143,10 @@ struct ComicReaderView: View {
         }
         .sheet(isPresented: $showDisplay) {
             ComicDisplaySheet(mode: $mode, fitRaw: $fitRaw,
-                              backgroundRaw: $backgroundRaw, autoSeconds: $autoSeconds)
-                .presentationDetents([.height(330)])
+                              backgroundRaw: $backgroundRaw,
+                              autoPageSeconds: $autoPageSeconds,
+                              autoScrollSpeed: $autoScrollSpeed)
+                .presentationDetents([.height(420)])
         }
         .overlay(alignment: .bottom) {
             if let toast {
@@ -270,15 +281,29 @@ struct ComicReaderView: View {
         }
     }
 
-    private func cycleAuto() {
-        switch autoSeconds {
-        case 0: autoSeconds = 5
-        case 5: autoSeconds = 10
-        case 10: autoSeconds = 15
-        default: autoSeconds = 0
+    private func toggleAuto() {
+        autoRunning.toggle()
+        if autoRunning {
+            stripResetToken += 1
+            restartAuto()
+            showLocalToast(mode == .strip
+                           ? "自动滚动已开启 · 速度在设置里调"
+                           : "自动翻页已开启 · \(autoPageSeconds) 秒/页")
+        } else {
+            autoTask?.cancel()
+            autoTask = nil
+            showLocalToast("自动阅读已停止")
         }
-        restartAuto()
-        showLocalToast(autoSeconds > 0 ? "自动翻页 \(autoSeconds) 秒/页" : "自动翻页已关闭")
+    }
+
+    private var stripPointsPerSecond: CGFloat {
+        CGFloat(18 + max(1, autoScrollSpeed) * 10)
+    }
+
+    private func stripReachedBottom() {
+        guard autoRunning else { return }
+        autoRunning = false
+        showLocalToast("已到最后一页，自动滚动已停止")
     }
 
     private var pageCatalog: some View {
@@ -321,19 +346,24 @@ struct ComicReaderView: View {
         store?.prefetch(for: book, around: value, radius: 2, options: decodeOptions)
     }
 
+    private func stopAutoTask() {
+        autoTask?.cancel()
+        autoTask = nil
+    }
+
     private func restartAuto() {
         autoTask?.cancel()
-        guard autoSeconds > 0, mode == .page else { return }
+        guard autoRunning, mode == .page else { return }
         autoTask = Task { @MainActor in
             while !Task.isCancelled {
-                let seconds = autoSeconds
-                guard seconds > 0 else { return }
+                let seconds = autoPageSeconds
+                guard autoRunning, seconds > 0 else { return }
                 try? await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, autoRunning else { return }
                 if index + 1 < pages.count {
                     index += 1
                 } else {
-                    autoSeconds = 0
+                    autoRunning = false
                     showLocalToast("已到最后一页，自动翻页停止")
                     return
                 }

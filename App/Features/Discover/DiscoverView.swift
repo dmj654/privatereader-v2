@@ -36,9 +36,12 @@ struct DiscoverView: View {
 
                     if currentKindCount == 0 {
                         importGuide
+                    } else if kind == .comic {
+                        ExploreSection(kind: .comic)
+                            .id("comic-explore")
                     } else {
-                        ExploreSection(kind: kind)
-                            .id(kind)
+                        NovelDiscoverSection()
+                            .id("novel-discover")
                     }
                 }
                 .padding(.horizontal, Spacing.l)

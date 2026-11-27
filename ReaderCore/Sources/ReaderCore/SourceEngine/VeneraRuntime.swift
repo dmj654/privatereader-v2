@@ -407,7 +407,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.7.8';")
+        context.evaluateScript("globalThis.appVersion = '1.7.9';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 
@@ -424,13 +424,24 @@ public final class VeneraRuntime: @unchecked Sendable {
             throw VeneraEngineError.script(exception.toString() ?? "源实例创建失败")
         }
 
-        // 少数源在 init 里登录/取 token；给它一点时间，失败不影响后面的调用。
+        // 少数源在 init 里登录/取 token；有 init 才等，等它真正结束（最多 2 秒），
+        // 没有 init 的源不再白等 2 秒。这是发现页首屏慢的主要来源之一。
         context.evaluateScript("""
         globalThis.__initError = undefined;
-        try { if (__source.init) { const p = __source.init(); if (p && p.catch) p.catch(e => { globalThis.__initError = '' + e; }); } }
-        catch (e) { globalThis.__initError = '' + e; }
+        globalThis.__initDone = false;
+        (async () => {
+            try {
+                if (__source.init) {
+                    const p = __source.init();
+                    if (p && typeof p.then === 'function') { await p; }
+                }
+            } catch (e) {
+                globalThis.__initError = '' + e;
+            }
+            globalThis.__initDone = true;
+        })();
         """)
-        pump(context, until: Date().addingTimeInterval(2.0))
+        pump(context, until: Date().addingTimeInterval(2.0), doneKey: "__initDone")
 
         let deadline = Date().addingTimeInterval(timeout)
         context.evaluateScript("""
@@ -459,9 +470,9 @@ public final class VeneraRuntime: @unchecked Sendable {
         return context.objectForKeyedSubscript("__result")?.toObject()
     }
 
-    private func pump(_ context: JSContext, until deadline: Date) {
+    private func pump(_ context: JSContext, until deadline: Date, doneKey: String = "__done") {
         while Date() < deadline {
-            if context.objectForKeyedSubscript("__done").toBool() { return }
+            if context.objectForKeyedSubscript(doneKey).toBool() { return }
             _ = context.evaluateScript("void 0")
             Thread.sleep(forTimeInterval: 0.002)
         }

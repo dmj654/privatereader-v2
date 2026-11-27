@@ -18,6 +18,9 @@ struct TypographySheet: View {
     let onEditSpeechZones: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("novel.autoPageSeconds") private var autoPageSeconds = 5
+    @AppStorage("novel.autoScrollSpeed") private var autoScrollSpeed = 3.0
+    @AppStorage("novel.layoutMode") private var layoutRaw = NovelLayoutMode.paged.rawValue
 
     var body: some View {
         ScrollView {
@@ -30,6 +33,7 @@ struct TypographySheet: View {
 
                 if focus == .typography {
                     animationCard
+                    autoReadCard
                     zoneSection
                 }
             }
@@ -185,6 +189,67 @@ struct TypographySheet: View {
             Text(prefs.pageTurn.detail)
                 .font(.system(size: 11))
                 .foregroundStyle(Palette.ink3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .background(Palette.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Palette.line, lineWidth: 1)
+        }
+    }
+
+    // MARK: 自动阅读
+
+    private var autoReadCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("自动阅读")
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(Palette.ink2)
+
+            settingRow("阅读方式") {
+                Picker("", selection: $layoutRaw) {
+                    ForEach(NovelLayoutMode.allCases) { item in
+                        Text(item.title).tag(item.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 150)
+            }
+
+            rowDivider
+
+            settingRow("翻页间隔", value: "\(autoPageSeconds)s") {
+                HStack(spacing: 7) {
+                    ForEach([3, 5, 10], id: \.self) { seconds in
+                        optionChip("\(seconds)s", selected: autoPageSeconds == seconds, expands: true) {
+                            autoPageSeconds = seconds
+                        }
+                    }
+                }
+            }
+
+            rowDivider
+
+            settingRow("滚动速度", value: "\(Int(autoScrollSpeed)) 档") {
+                HStack(spacing: 8) {
+                    Text("慢")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Palette.ink3)
+                    Slider(value: $autoScrollSpeed, in: 1...8, step: 1)
+                        .tint(Palette.accent)
+                        .frame(width: 110)
+                    Text("快")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Palette.ink3)
+                }
+            }
+
+            Text("自动阅读按钮只负责开启 / 停止；翻页模式按上面的间隔翻页，滚动模式按上面的速度连续下滑。")
+                .font(.system(size: 10.5))
+                .foregroundStyle(Palette.ink3)
+                .lineSpacing(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)

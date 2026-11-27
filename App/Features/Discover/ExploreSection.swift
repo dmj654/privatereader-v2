@@ -333,11 +333,29 @@ struct ExploreSection: View {
     }
 
     private func loadVeneraPages(source: VeneraSource) {
+        if let cached = ExploreCache.shared.home(sourceID: source.id) {
+            explorePages = cached.pages
+            selectedPage = cached.pages.first
+            sections = cached.sections
+            isLoading = false
+            errorText = nil
+            return
+        }
+
         isLoading = true
         errorText = nil
         task = Task {
             do {
-                let pages = try await env.veneraRuntime.explorePages(source: source, timeout: 25)
+                // 发现页列表和首个发现页并行取：两个 JSContext 同时跑，
+                // 首屏时间从「两段相加」变成「取较长的那一段」。
+                async let pagesTask = env.veneraRuntime.explorePages(source: source, timeout: 20)
+                async let sectionsTask = env.veneraRuntime.explore(
+                    source: source,
+                    page: VeneraExplorePage(title: "推荐", type: "multiPageComicList"),
+                    timeout: 30
+                )
+                let pages = try await pagesTask
+                let loaded = try await sectionsTask
                 guard !pages.isEmpty else {
                     await MainActor.run {
                         isLoading = false
@@ -345,9 +363,12 @@ struct ExploreSection: View {
                     }
                     return
                 }
-                let first = pages[0]
-                let loaded = try await env.veneraRuntime.explore(source: source, page: first, timeout: 35)
                 if Task.isCancelled { return }
+                let first = pages[0]
+                ExploreCache.shared.storeHome(sourceID: source.id,
+                                              pages: pages,
+                                              sections: loaded,
+                                              firstPageTitle: first.title)
                 await MainActor.run {
                     explorePages = pages
                     selectedPage = first
@@ -365,13 +386,23 @@ struct ExploreSection: View {
     }
 
     private func loadVenera(source: VeneraSource, page: VeneraExplorePage) {
+        if let cached = ExploreCache.shared.sections(sourceID: source.id, pageTitle: page.title) {
+            sections = cached
+            isLoading = false
+            errorText = nil
+            return
+        }
+
         task?.cancel()
         isLoading = true
         errorText = nil
         task = Task {
             do {
-                let loaded = try await env.veneraRuntime.explore(source: source, page: page, timeout: 35)
+                let loaded = try await env.veneraRuntime.explore(source: source, page: page, timeout: 30)
                 if Task.isCancelled { return }
+                ExploreCache.shared.storeSections(loaded,
+                                                  sourceID: source.id,
+                                                  pageTitle: page.title)
                 await MainActor.run {
                     sections = loaded
                     isLoading = false
@@ -416,6 +447,61 @@ struct ExploreSection: View {
             }
         }
     }
+}
+
+// MARK: - 缓存
+
+/// 发现页首屏缓存：同一个源、同一个分类短暂返回时不再重新起 JS 运行时。
+/// 只缓存展示数据，不缓存健康结论。
+private final class ExploreCache {
+    static let shared = ExploreCache()
+
+    struct Home {
+        let pages: [VeneraExplorePage]
+        let sections: [VeneraExploreSection]
+        let firstPageTitle: String
+    }
+
+    private let homeBoxes = NSCache<NSString, HomeBox>()
+    private let sectionBoxes = NSCache<NSString, SectionBox>()
+
+    func home(sourceID: String) -> Home? {
+        homeBoxes.object(forKey: sourceID as NSString)?.home
+    }
+
+    func storeHome(sourceID: String,
+                   pages: [VeneraExplorePage],
+                   sections: [VeneraExploreSection],
+                   firstPageTitle: String) {
+        let box = HomeBox()
+        box.home = Home(pages: pages, sections: sections, firstPageTitle: firstPageTitle)
+        homeBoxes.setObject(box, forKey: sourceID as NSString)
+        storeSections(sections, sourceID: sourceID, pageTitle: firstPageTitle)
+    }
+
+    func sections(sourceID: String, pageTitle: String) -> [VeneraExploreSection]? {
+        sectionBoxes.object(forKey: key(sourceID: sourceID, pageTitle: pageTitle))?.sections
+    }
+
+    func storeSections(_ sections: [VeneraExploreSection],
+                       sourceID: String,
+                       pageTitle: String) {
+        let box = SectionBox()
+        box.sections = sections
+        sectionBoxes.setObject(box, forKey: key(sourceID: sourceID, pageTitle: pageTitle))
+    }
+
+    private func key(sourceID: String, pageTitle: String) -> NSString {
+        "\(sourceID)|\(pageTitle)" as NSString
+    }
+}
+
+private final class HomeBox {
+    var home: ExploreCache.Home?
+}
+
+private final class SectionBox {
+    var sections: [VeneraExploreSection] = []
 }
 
 // MARK: - 卡片
