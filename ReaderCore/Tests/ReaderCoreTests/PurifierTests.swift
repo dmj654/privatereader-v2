@@ -8,6 +8,18 @@ final class PurifierTests: XCTestCase {
         XCTAssertEqual(rules, ["##广告##", "##最新网址##"])
     }
 
+    func testExtractsEmbeddedPurifySegment() {
+        let rules = Purifier.extractRules(from: "id.content@html##最新网址：[^\\n]*")
+        XCTAssertEqual(rules, ["##最新网址：[^\\n]*"], "legado 常见的内嵌 ## 规则也必须抽出来")
+    }
+
+    func testEmbeddedRuleActuallyRemovesWatermark() {
+        let rules = Purifier.extractRules(from: "id.content@html##最新网址：[^\\n]*")
+        let result = Purifier(rules: rules).apply(to: "最新网址：https://example.com\n正文第一段")
+        XCTAssertEqual(result.text, "\n正文第一段")
+        XCTAssertEqual(result.hitCount, 1)
+    }
+
     func testExtractReturnsEmptyWhenNoPurifySegment() {
         XCTAssertTrue(Purifier.extractRules(from: "id.content@html").isEmpty)
         XCTAssertTrue(Purifier.extractRules(from: "").isEmpty)

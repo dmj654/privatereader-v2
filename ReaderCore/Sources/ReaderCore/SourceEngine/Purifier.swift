@@ -28,11 +28,18 @@ public struct Purifier: Sendable {
     }
 
     /// 从 `ruleContent.content` 这类规则串里抽出净化段：
-    /// `id.content@html&&##广告##&&##最新网址##` → ["##广告##", "##最新网址##"]
+    /// - `id.content@html&&##广告##&&##最新网址##` → ["##广告##", "##最新网址##"]
+    /// - `id.content@html##最新网址：[^\n]*` → ["##最新网址：[^\n]*"]
+    ///   后者是 legado 源里最常见的写法，不能只认 `&&` 开头的段。
     public static func extractRules(from rule: String) -> [String] {
         rule.components(separatedBy: "&&")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { $0.hasPrefix("##") }
+            .compactMap { segment -> String? in
+                let trimmed = segment.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("##") { return trimmed }
+                guard let range = trimmed.range(of: "##") else { return nil }
+                let suffix = String(trimmed[range.lowerBound...]).trimmingCharacters(in: .whitespaces)
+                return suffix.isEmpty ? nil : suffix
+            }
     }
 
     public func apply(to text: String) -> Outcome {
