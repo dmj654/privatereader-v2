@@ -114,9 +114,7 @@ struct MergedOnlineDetailView: View {
                     if !model.chapters.isEmpty {
                         tag("\(model.chapters.count) \(book.isComic ? "话" : "章")")
                     }
-                    if model.cachedChapterCount > 0 {
-                        tag("已缓存 \(model.cachedChapterCount) \(book.isComic ? "话" : "章")")
-                    }
+                    tag("已缓存 \(model.cachedChapterCount) \(book.isComic ? "话" : "章")")
                     tag("\(book.entries.count) 个源")
                 }
                 .padding(.top, 2)

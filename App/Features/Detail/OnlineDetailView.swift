@@ -154,9 +154,7 @@ struct OnlineDetailView: View {
                     if !detail.wordCount.isEmpty { tag(detail.wordCount) }
                     if !chapters.isEmpty { tag("\(chapters.count) \(isComic ? "话" : "章")") }
                     if shelfBook != nil { tag("在追") }
-                    if cachedChapterCount > 0 {
-                        tag("已缓存 \(cachedChapterCount) \(isComic ? "话" : "章")")
-                    }
+                    tag("已缓存 \(cachedChapterCount) \(isComic ? "话" : "章")")
                 }
                 .padding(.top, 2)
             }

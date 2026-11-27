@@ -528,8 +528,7 @@ struct ShelfView: View {
             for book in books {
                 map[book.id] = (try? env.progress.fetch(bookId: book.id))?.percent ?? 0
                 if book.origin == .remote {
-                    let count = env.onlineReading.cachedChapterCount(for: book)
-                    if count > 0 { cacheMap[book.id] = count }
+                    cacheMap[book.id] = env.onlineReading.cachedChapterCount(for: book)
                 }
             }
             progressByBook = map

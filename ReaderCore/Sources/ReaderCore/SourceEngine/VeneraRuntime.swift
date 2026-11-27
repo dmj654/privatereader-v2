@@ -407,7 +407,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.8.0';")
+        context.evaluateScript("globalThis.appVersion = '1.8.1';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 

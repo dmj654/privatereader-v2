@@ -28,8 +28,13 @@ struct OnlineComicView: View {
     @State private var toast: String?
     @State private var autoRunning = false
     @State private var autoResetToken = 0
-    @State private var isDownloading = false
-    @State private var downloadText = "下载"
+    @State private var showCache = false
+    @State private var cacheCount = 5
+    @State private var cacheDone = 0
+    @State private var cacheTotal = 0
+    @State private var cacheRunning = false
+    @State private var cacheResult: String?
+    @State private var cacheError: String?
 
     @AppStorage("comic.autoScrollSpeed") private var autoScrollSpeed = 3.0
     @AppStorage("comic.online.background") private var backgroundRaw = "canvas"
@@ -87,8 +92,8 @@ struct OnlineComicView: View {
                         nextEnabled: chapterIndex + 1 < chapters.count,
                         bookmarked: bookmarked,
                         onBookmark: toggleBookmark,
-                        downloadText: downloadText,
-                        onDownload: downloadChapter,
+                        downloadText: "缓存",
+                        onDownload: { showCache = true },
                         shareURL: sourceURL,
                         shareText: book.title,
                         autoOn: autoRunning,
@@ -136,6 +141,9 @@ struct OnlineComicView: View {
         }
         .sheet(isPresented: $showSettings) {
             onlineSettings.presentationDetents([.height(360)])
+        }
+        .sheet(isPresented: $showCache) {
+            comicCacheSheet.presentationDetents([.height(380), .medium])
         }
         .onDisappear {
             autoRunning = false
@@ -283,6 +291,91 @@ struct OnlineComicView: View {
     }
 
     // MARK: 数据
+
+    private var remainingChapters: Int {
+        max(chapters.count - chapterIndex - 1, 0)
+    }
+
+    private var comicCacheSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    if remainingChapters > 0 {
+                        Stepper(value: Binding(
+                            get: { min(max(cacheCount, 1), remainingChapters) },
+                            set: { cacheCount = $0 }
+                        ), in: 1...remainingChapters) {
+                            Text("缓存后面 \(min(max(cacheCount, 1), remainingChapters)) 话")
+                                .font(.system(size: 15))
+                        }
+                        Text("从第 \(chapterIndex + 2) 话开始，最多 \(remainingChapters) 话")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Palette.ink3)
+                    } else {
+                        Text("已经是最后一话，没有可缓存的后续章节")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Palette.ink3)
+                    }
+                } header: {
+                    Text("缓存范围")
+                }
+
+                Section {
+                    HStack {
+                        Text("当前已缓存")
+                        Spacer()
+                        Text("\(env.onlineReading.cachedChapterCount(for: book)) 话")
+                            .foregroundStyle(Palette.ink2)
+                    }
+                    .font(.system(size: 14))
+
+                    if cacheTotal > 0 {
+                        ProgressView(value: Double(cacheDone), total: Double(cacheTotal))
+                            .tint(Palette.accent)
+                        Text("\(cacheDone) / \(cacheTotal) 话")
+                            .font(.system(size: 12).monospacedDigit())
+                            .foregroundStyle(Palette.ink3)
+                    }
+                    if let cacheResult {
+                        Text(cacheResult)
+                            .font(.system(size: 13))
+                            .foregroundStyle(Palette.accent)
+                    }
+                    if let cacheError {
+                        Text(cacheError)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.red)
+                    }
+                } header: {
+                    Text("状态")
+                }
+
+                Section {
+                    Button {
+                        cacheFollowingComicChapters()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if cacheRunning {
+                                ProgressView().controlSize(.small)
+                            }
+                            Text(cacheRunning ? "缓存中…" : "开始缓存")
+                                .font(.system(size: 15, weight: .semibold))
+                            Spacer()
+                        }
+                    }
+                    .disabled(cacheRunning || remainingChapters == 0)
+                }
+            }
+            .navigationTitle("缓存后续章节")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("关闭") { showCache = false }
+                }
+            }
+        }
+    }
 
     private var currentSubtitle: String {
         guard chapters.indices.contains(chapterIndex) else { return "" }
@@ -447,41 +540,96 @@ struct OnlineComicView: View {
         moveChapter(1)
     }
 
-    private func downloadChapter() {
-        guard !isDownloading, !pages.isEmpty else { return }
-        isDownloading = true
-        downloadText = "0/\(pages.count)"
+    private func cacheFollowingComicChapters() {
+        guard !cacheRunning, remainingChapters > 0 else { return }
+        guard let sourceSnapshot = source else {
+            cacheError = "书源不可用，无法缓存。"
+            return
+        }
 
-        let urls = pages
-        let chapter = chapterIndex
-        let headers = self.headers
-        let bookId = book.id
+        let start = chapterIndex + 1
+        let target = min(max(cacheCount, 1), remainingChapters)
+        let comicId = manifest?.bookUrl ?? ""
+        let headersSnapshot = headers
+
+        cacheRunning = true
+        cacheDone = 0
+        cacheTotal = target
+        cacheResult = nil
+        cacheError = nil
 
         Task {
-            var done = 0
-            for (index, raw) in urls.enumerated() {
-                if Task.isCancelled { break }
-                let cacheURL = env.paths.cache
-                    .appendingPathComponent(bookId, isDirectory: true)
-                    .appendingPathComponent("online", isDirectory: true)
-                    .appendingPathComponent("\(chapter)", isDirectory: true)
-                    .appendingPathComponent("\(index).img", isDirectory: false)
+            var added = 0
+            do {
+                for offset in 0..<target {
+                    let index = start + offset
+                    guard chapters.indices.contains(index) else { break }
+                    let chapter = chapters[index]
+                    let wasCached = chapterIsCached(index)
 
-                if OnlineComicImageCache.shared.image(for: cacheURL) == nil,
-                   let url = URL(string: raw) {
-                    _ = await OnlineComicImageCache.shared.download(
-                        url: url, headers: headers, to: cacheURL
-                    )
+                    let urls: [String]
+                    switch sourceSnapshot {
+                    case .legado(let legado):
+                        urls = try await env.sourceClient.comicPages(source: legado, chapter: chapter)
+                    case .venera(let script):
+                        urls = try await env.veneraRuntime.pages(
+                            source: script,
+                            comicId: comicId,
+                            epId: chapter.url
+                        )
+                    }
+
+                    for (pageIndex, raw) in urls.enumerated() {
+                        if Task.isCancelled { break }
+                        let target = comicCacheURL(chapter: index, index: pageIndex)
+                        if OnlineComicImageCache.shared.image(for: target) == nil,
+                           let url = URL(string: raw) {
+                            _ = await OnlineComicImageCache.shared.download(
+                                url: url, headers: headersSnapshot, to: target
+                            )
+                        }
+                    }
+
+                    if !wasCached && chapterIsCached(index) { added += 1 }
+                    await MainActor.run { cacheDone = offset + 1 }
                 }
-                done += 1
-                let text = "\(done)/\(urls.count)"
-                await MainActor.run { downloadText = text }
+                await MainActor.run {
+                    cacheRunning = false
+                    cacheResult = added > 0
+                        ? "已缓存 \(target) 话，新增 \(added) 话"
+                        : "这 \(target) 话之前已经缓存过了"
+                }
+            } catch {
+                await MainActor.run {
+                    cacheRunning = false
+                    cacheError = (error as? LocalizedError)?.errorDescription
+                        ?? error.localizedDescription
+                }
             }
-            await MainActor.run {
-                isDownloading = false
-                downloadText = "下载"
-                showToast("本话已缓存")
-            }
+        }
+    }
+
+    private func comicCacheURL(chapter: Int, index: Int) -> URL {
+        env.paths.cache
+            .appendingPathComponent(book.id, isDirectory: true)
+            .appendingPathComponent("online", isDirectory: true)
+            .appendingPathComponent("\(chapter)", isDirectory: true)
+            .appendingPathComponent("\(index).img", isDirectory: false)
+    }
+
+    private func chapterIsCached(_ chapter: Int) -> Bool {
+        let directory = env.paths.cache
+            .appendingPathComponent(book.id, isDirectory: true)
+            .appendingPathComponent("online", isDirectory: true)
+            .appendingPathComponent("\(chapter)", isDirectory: true)
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ) else { return false }
+        return files.contains { url in
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+            return size > 0
         }
     }
 
