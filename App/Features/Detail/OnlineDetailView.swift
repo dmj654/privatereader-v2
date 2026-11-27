@@ -14,6 +14,7 @@ struct OnlineDetailView: View {
     @State private var showReader = false
     @State private var showCatalog = false
     @State private var pendingChapter: Int?
+    @State private var pendingCatalogChapter: Int?
     @State private var isOpening = false
     @State private var isAdding = false
     @State private var isCaching = false
@@ -74,7 +75,11 @@ struct OnlineDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showCatalog) {
+        .sheet(isPresented: $showCatalog, onDismiss: {
+            guard let index = pendingCatalogChapter else { return }
+            pendingCatalogChapter = nil
+            startReading(chapter: index)
+        }) {
             catalogSheet
                 .presentationDetents([.medium, .large])
         }
@@ -294,8 +299,8 @@ struct OnlineDetailView: View {
             List {
                 ForEach(Array(chapters.enumerated()), id: \.offset) { index, chapter in
                     Button {
+                        pendingCatalogChapter = index
                         showCatalog = false
-                        startReading(chapter: index)
                     } label: {
                         HStack {
                             Text(chapter.name)

@@ -142,7 +142,8 @@ public actor OnlineBookService {
         guard !detail.chapters.isEmpty else { throw SourceError.emptyRule("目录是空的") }
 
         let bookId = UUID().uuidString
-        let coverPath = await downloadCover(urlString: detail.coverUrl,
+        let resolvedCover = detail.coverUrl.isEmpty ? online.coverUrl : detail.coverUrl
+        let coverPath = await downloadCover(urlString: resolvedCover,
                                             baseURL: nil,
                                             headers: runtime.imageHeaders,
                                             bookID: bookId)
@@ -153,7 +154,7 @@ public actor OnlineBookService {
             tocUrl: detail.comicId,
             title: detail.title,
             author: detail.author,
-            coverUrl: detail.coverUrl,
+            coverUrl: resolvedCover,
             intro: detail.intro,
             kind: detail.kind,
             chapters: detail.chapters
