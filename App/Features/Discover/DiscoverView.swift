@@ -51,6 +51,7 @@ struct DiscoverView: View {
                         sourceCard
                         maintenanceCard
                         ExploreSection(kind: kind)
+                            .id(kind)
                     }
 
                     rulesCard

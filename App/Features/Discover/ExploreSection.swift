@@ -9,6 +9,7 @@ struct ExploreSection: View {
     @EnvironmentObject private var env: AppEnvironment
 
     @State private var targets: [SearchTarget] = []
+    @State private var targetsKind: SearchViewModel.Kind?
     @State private var selectedTargetId: String?
 
     // legado
@@ -26,8 +27,12 @@ struct ExploreSection: View {
     @State private var errorText: String?
     @State private var task: Task<Void, Never>?
 
+    private var visibleTargets: [SearchTarget] {
+        targets.filter { $0.isComic == (kind == .comic) }
+    }
+
     private var selectedTarget: SearchTarget? {
-        targets.first { $0.id == selectedTargetId }
+        visibleTargets.first { $0.id == selectedTargetId }
     }
 
     private var selectedVenera: VeneraSource? {
@@ -42,10 +47,10 @@ struct ExploreSection: View {
                     .font(.system(size: 14.5, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                 Spacer(minLength: 0)
-                if !targets.isEmpty { sourcePicker }
+                if !visibleTargets.isEmpty { sourcePicker }
             }
 
-            if targets.isEmpty {
+            if visibleTargets.isEmpty {
                 Text(kind == .comic
                      ? "已启用的漫画源里没有提供发现页的源。搜索仍然可用；导入带发现页的 Venera 源后会显示推荐和热门。"
                      : "已启用的书源里没有带发现规则的源。搜索仍然可用。")
@@ -72,7 +77,7 @@ struct ExploreSection: View {
 
     private var sourcePicker: some View {
         Menu {
-            ForEach(targets) { target in
+            ForEach(visibleTargets) { target in
                 Button {
                     select(target: target)
                 } label: {
@@ -253,6 +258,7 @@ struct ExploreSection: View {
     private func reset() {
         task?.cancel()
         targets = []
+        targetsKind = nil
         selectedTargetId = nil
         categories = []
         selectedCategory = nil
@@ -265,20 +271,10 @@ struct ExploreSection: View {
     }
 
     private func loadSources() {
-        guard targets.isEmpty else { return }
+        guard targets.isEmpty || targetsKind != kind else { return }
         let all = (try? SourceImportService(repo: env.sources).enabledTargets()) ?? []
-        let wantedComic = kind == .comic
-        targets = all.filter { target in
-            guard target.isComic == wantedComic else { return false }
-            switch target {
-            case .legado(let source):
-                return !source.exploreUrl.isNilOrEmpty && !source.ruleExplore.bookList.isEmpty
-            case .venera:
-                // Venera 的 explore 写在 JS 里，只有真正打开时才知道有没有；
-                // 先列出来，点进去没有会提示，而不是整类源都消失。
-                return true
-            }
-        }
+        targets = ExploreTargetFilter.filter(all, comic: kind == .comic)
+        targetsKind = kind
 
         guard let first = targets.first(where: { target in
             // 漫画默认先展示「拷贝漫画」这类首页源；没有就退回第一个。
@@ -288,6 +284,7 @@ struct ExploreSection: View {
     }
 
     private func select(target: SearchTarget) {
+        guard target.isComic == (kind == .comic) else { return }
         task?.cancel()
         selectedTargetId = target.id
         categories = []
@@ -476,11 +473,5 @@ private struct VeneraSectionGridSheet: View {
                 }
             }
         }
-    }
-}
-
-private extension Optional where Wrapped == String {
-    var isNilOrEmpty: Bool {
-        self?.isEmpty ?? true
     }
 }

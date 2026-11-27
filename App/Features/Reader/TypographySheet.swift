@@ -22,8 +22,6 @@ struct TypographySheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                header
-
                 if focus == .typography {
                     typographyCard
                 }
@@ -41,20 +39,6 @@ struct TypographySheet: View {
             .padding(.bottom, 32)
         }
         .background(Palette.surface)
-    }
-
-    // MARK: 顶部
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(focus == .theme ? "阅读背景" : "排版设置")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Palette.ink)
-            Text(focus == .theme ? "选择正文的背景色" : "字体、间距、页边距与翻页方式")
-                .font(.system(size: 11.5))
-                .foregroundStyle(Palette.ink3)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: 字体与间距
