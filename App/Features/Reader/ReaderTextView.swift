@@ -82,9 +82,7 @@ struct ReaderTextView: UIViewRepresentable {
         func textView(_ textView: UITextView,
                       editMenuForTextIn range: NSRange,
                       suggestedActions: [UIMenuElement]) -> UIMenu? {
-            guard range.length > 0, let onExplain = parent.onExplain, let onPurify = parent.onPurify else {
-                return nil
-            }
+            guard range.length > 0 else { return nil }
             let text = (textView.text as NSString).substring(with: range)
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
 
@@ -98,14 +96,19 @@ struct ReaderTextView: UIViewRepresentable {
             let copy = UIAction(title: "复制", image: UIImage(systemName: "doc.on.doc")) { _ in
                 UIPasteboard.general.string = text
             }
-            let explain = UIAction(title: "解释", image: UIImage(systemName: "text.magnifyingglass")) { _ in
-                onExplain(text)
+            var extras: [UIMenuElement] = []
+            if let onExplain = parent.onExplain {
+                extras.append(UIAction(title: "解释", image: UIImage(systemName: "text.magnifyingglass")) { _ in
+                    onExplain(text)
+                })
             }
-            let purify = UIAction(title: "新建净化规则",
-                                  image: UIImage(systemName: "eraser.line.dashed")) { _ in
-                onPurify(text)
+            if let onPurify = parent.onPurify {
+                extras.append(UIAction(title: "新建净化规则",
+                                       image: UIImage(systemName: "eraser.line.dashed")) { _ in
+                    onPurify(text)
+                })
             }
-            return UIMenu(children: [copy] + filtered + [explain, purify])
+            return UIMenu(children: [copy] + filtered + extras)
         }
     }
 }
