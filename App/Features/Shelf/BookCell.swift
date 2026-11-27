@@ -28,8 +28,8 @@ struct BookCell: View {
                 Text(progressText)
                     .font(.system(size: 10.5).monospacedDigit())
                     .foregroundStyle(progress > 0 ? Palette.accent : Palette.ink3.opacity(0.8))
-                if let cachedChapterCount, cachedChapterCount > 0 {
-                    Text("· 缓存 \(cachedChapterCount) 章")
+                if let cachedChapterCount {
+                    Text("· 缓存 \(cachedChapterCount) \(book.type == .comic ? "话" : "章")")
                         .font(.system(size: 10))
                         .foregroundStyle(Palette.ink3)
                         .lineLimit(1)
