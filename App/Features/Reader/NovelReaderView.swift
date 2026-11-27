@@ -58,6 +58,11 @@ struct NovelReaderView: View {
     @State private var sleepWorkItem: DispatchWorkItem?
     @State private var showingTimerMenu = false
 
+    /// 自动阅读：3 / 5 / 10 秒翻一页，跨章继续，到全书末尾停。
+    @State private var autoTask: Task<Void, Never>?
+    @State private var autoToast: String?
+    @AppStorage("novel.autoSeconds") private var autoSeconds = 0
+
     /// 当前是阅读还是听书。听书有自己的一套菜单和九宫格。
     @State private var mode: ReaderMode = .reading
     /// 正在编辑哪一套九宫格。
@@ -139,6 +144,22 @@ struct NovelReaderView: View {
                 if editingZones {
                     zoneEditor
                 }
+
+                if let autoToast {
+                    VStack {
+                        Spacer()
+                        Text(autoToast)
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(Color.black.opacity(0.72))
+                            .clipShape(Capsule())
+                            .padding(.bottom, model.isMenuVisible ? 150 : 44)
+                            .transition(.opacity)
+                    }
+                    .allowsHitTesting(false)
+                }
             }
             // 退出时整页（包括菜单）一起走，才有"被推回去"的实感
             .offset(x: exitOffset)
@@ -175,6 +196,7 @@ struct NovelReaderView: View {
         .onAppear {
             // 先接偏好再加载：分页要用上次的字号，否则第一屏会按默认排版闪一下再重排。
             model.attach(preferences: prefs)
+            configurePurifier(for: model.book)
             model.load()
         }
         // 切后台也落一次盘：用户常常按 Home 键离开，而不是点返回。
@@ -183,10 +205,14 @@ struct NovelReaderView: View {
                 model.persistProgress(force: true)
                 // 进后台/锁屏前把正在播放的信息再写一遍，避免系统丢掉锁屏卡片
                 speech.refreshNowPlaying()
+                stopAutoRead()
+            } else if autoSeconds > 0 {
+                restartAutoRead()
             }
         }
         .onDisappear {
             stopSpeech()
+            stopAutoRead()
             model.finishSession()
             if let seconds = model.pendingSessionDuration {
                 try? env.sessions.record(ReadingSession(bookId: model.book.id,
@@ -225,8 +251,10 @@ struct NovelReaderView: View {
             case .sourceSwitch:
                 SourceSwitchSheet(book: book) { updated in
                     stopSpeech()
+                    stopAutoRead()
                     if model.applySourceSwitch(updated) {
                         book = updated
+                        configurePurifier(for: updated)
                         Haptics.success()
                     }
                     sheet = nil
@@ -757,6 +785,8 @@ struct NovelReaderView: View {
     // MARK: 朗读控制
 
     private func startSpeech() {
+        stopAutoRead()
+        autoSeconds = 0
         guard let text = model.prepareSpeech() else {
             pending = PendingFeature(
                 title: "这一章没有可朗读的文字",
@@ -966,6 +996,107 @@ struct NovelReaderView: View {
         model.endSpeech()
     }
 
+    // MARK: 自动阅读
+
+    private func cycleAutoRead() {
+        switch autoSeconds {
+        case 0: autoSeconds = 3
+        case 3: autoSeconds = 5
+        case 5: autoSeconds = 10
+        default: autoSeconds = 0
+        }
+        if autoSeconds > 0 {
+            // 开启后先把菜单收起来，用户马上能看到自动翻页，而不是盯着菜单等。
+            if model.isMenuVisible {
+                withAnimation(.easeInOut(duration: 0.18)) { model.isMenuVisible = false }
+            }
+            showToast("自动阅读 \(autoSeconds) 秒/页")
+            restartAutoRead()
+        } else {
+            stopAutoRead()
+            showToast("自动阅读已关闭")
+        }
+    }
+
+    private func restartAutoRead() {
+        autoTask?.cancel()
+        guard autoSeconds > 0, mode == .reading, !model.isLoading else { return }
+
+        autoTask = Task { @MainActor in
+            while !Task.isCancelled {
+                let seconds = autoSeconds
+                guard seconds > 0 else { return }
+                try? await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
+                guard !Task.isCancelled else { return }
+                guard mode == .reading else { return }
+
+                // 在线章节正在取正文：这一拍先不翻，等下一拍，避免停在空白页。
+                if model.isContentLoading { continue }
+                if model.canTurn(by: 1) {
+                    model.turnPage(by: 1)
+                } else {
+                    autoSeconds = 0
+                    stopAutoRead()
+                    showToast("已到全书末尾，自动阅读已停止")
+                    return
+                }
+            }
+        }
+    }
+
+    private func stopAutoRead() {
+        autoTask?.cancel()
+        autoTask = nil
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation(.easeInOut(duration: 0.16)) { autoToast = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.1) {
+            withAnimation(.easeInOut(duration: 0.16)) {
+                if autoToast == text { autoToast = nil }
+            }
+        }
+    }
+
+    // MARK: 净化
+
+    private func configurePurifier(for book: Book) {
+        let rules = purifierRules(for: book)
+        let key = purifyKey(for: book)
+        let enabled = UserDefaults.standard.object(forKey: key) as? Bool ?? true
+        model.configurePurifier(rules: rules, enabled: enabled)
+    }
+
+    private func togglePurifier() {
+        guard model.hasPurifierRules else {
+            showToast("当前书源没有配置净化规则，净化不会改动正文。")
+            return
+        }
+        let enabled = !model.isPurifierEnabled
+        UserDefaults.standard.set(enabled, forKey: purifyKey(for: model.book))
+        model.setPurifierEnabled(enabled)
+        if enabled {
+            showToast("净化已开启：本章命中 \(model.purifierHitCount) 处")
+        } else {
+            showToast("净化已关闭：显示源站原文")
+        }
+    }
+
+    private func purifyKey(for book: Book) -> String {
+        "novel.purify.\(book.id)"
+    }
+
+    private func purifierRules(for book: Book) -> [String] {
+        guard book.origin == .remote,
+              let manifest = try? env.onlineReading.manifest(for: book),
+              let record = try? env.sources.fetch(id: manifest.sourceId),
+              let target = SourceImportService(repo: env.sources).target(from: record),
+              let legado = target.legadoSource else {
+            return []
+        }
+        return Purifier.extractRules(from: legado.ruleContent.content)
+    }
+
     private func scheduleSleepTimer(minutes: Int?) {
         sleepWorkItem?.cancel()
         sleepMinutes = minutes
@@ -1087,21 +1218,42 @@ struct NovelReaderView: View {
                 .font(.system(size: 12.5))
                 .foregroundStyle(chromeFaint)
                 .lineLimit(1)
+
+            if autoSeconds > 0 {
+                Button {
+                    autoSeconds = 0
+                    stopAutoRead()
+                    showToast("自动阅读已停止")
+                } label: {
+                    Text("自动 \(autoSeconds)s")
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(chromeMuted)
+                        .padding(.horizontal, 7)
+                        .frame(height: 22)
+                        .background(chromeLine)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("停止自动阅读")
+            }
+
             Spacer()
+
             Button {
-                pending = PendingFeature(
-                    title: "净化还没接上",
-                    detail: "净化规则是书源自带的——滤掉站点塞进正文的广告和水印、还原被替换的字。等书源接进来，它会自动生效。"
-                )
+                togglePurifier()
             } label: {
                 Text("净化")
                     .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(model.theme.isDark ? chromeMuted : Palette.accentDeep)
+                    .foregroundStyle(model.isPurifierEnabled
+                                     ? (model.theme.isDark ? chromeMuted : Palette.accentDeep)
+                                     : chromeFaint)
                     .padding(.horizontal, 10)
                     .frame(height: 26)
                     .background(chromeChip)
                     .clipShape(Capsule())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(model.isPurifierEnabled ? "关闭正文净化" : "开启正文净化")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
@@ -1125,12 +1277,11 @@ struct NovelReaderView: View {
                 }
             }
             sideButton("list.bullet") { sheet = .catalog }
-            sideButton("play") {
-                pending = PendingFeature(
-                    title: "自动阅读还没接上",
-                    detail: "计划里是 3 / 5 / 10 秒自动翻页，条漫模式也会一起做。"
-                )
+            sideButton(autoSeconds == 0 ? "play.fill" : "pause.fill",
+                       highlighted: autoSeconds > 0) {
+                cycleAutoRead()
             }
+            .accessibilityLabel(autoSeconds == 0 ? "开启自动阅读" : "关闭自动阅读")
             sideButton("headphones", highlighted: true) { startSpeech() }
         }
     }

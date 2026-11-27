@@ -59,7 +59,8 @@ public final class OnlineReadingService: @unchecked Sendable {
                     manifest: manifest,
                     source: legado,
                     index: index,
-                    forceRefresh: forceRefresh
+                    forceRefresh: forceRefresh,
+                    purify: false
                 )
             case .venera:
                 throw VeneraEngineError.unsupported("漫画正文请在漫画阅读页加载图片。")
@@ -143,7 +144,10 @@ public final class OnlineReadingService: @unchecked Sendable {
                 progress?(index + 1, manifest.chapters.count)
                 continue
             }
-            _ = try await service.chapterBody(manifest: manifest, source: legado, index: index)
+            _ = try await service.chapterBody(manifest: manifest,
+                                              source: legado,
+                                              index: index,
+                                              purify: false)
             downloaded += 1
             progress?(index + 1, manifest.chapters.count)
         }

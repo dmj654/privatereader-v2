@@ -21,6 +21,9 @@ struct SourcesView: View {
     @State private var filter: HealthFilter = .all
     @State private var checkedCount = 0
     @State private var checkTask: Task<Void, Never>?
+    /// 上次检测写进数据库的结论：进页面后仍能看到失败/超时，而不是只剩本次内存状态。
+    @State private var persistedFailedIDs: Set<String> = []
+    @State private var persistedTimeoutIDs: Set<String> = []
 
     private var kindSources: [BookSource] {
         sources.filter { kindFilter.matches($0.type) }
@@ -54,6 +57,15 @@ struct SourcesView: View {
         }
     }
 
+    private var summaryDetail: String {
+        var parts = ["启用 \(enabledCount) 条", "共 \(kindSources.count) 条"]
+        let failed = kindSources.filter { $0.enabled && persistedFailedIDs.contains($0.id) }.count
+        let timedOut = kindSources.filter { $0.enabled && persistedTimeoutIDs.contains($0.id) }.count
+        if failed > 0 { parts.append("上次失败 \(failed) 条") }
+        if timedOut > 0 { parts.append("上次超时 \(timedOut) 条") }
+        return parts.joined(separator: " · ")
+    }
+
     private var filteredSources: [BookSource] {
         sources.filter { source in
             guard kindFilter.matches(source.type) else { return false }
@@ -71,9 +83,9 @@ struct SourcesView: View {
             case .ok:
                 return health[source.id]?.isHealthy == true
             case .failed:
-                guard source.enabled, let status = health[source.id] else { return false }
-                if case .skipped = status { return false }
-                return !status.isHealthy
+                guard source.enabled else { return false }
+                return persistedFailedIDs.contains(source.id)
+                    || health[source.id]?.isDefiniteFailure == true
             }
         }
     }
@@ -141,6 +153,7 @@ struct SourcesView: View {
                     emptyState
                 } else {
                     summaryCard
+                    maintenanceHint
                     filterBar
 
                     if filteredSources.isEmpty {
@@ -241,7 +254,7 @@ struct SourcesView: View {
                 Text("\(kindFilter.title) \(kindSources.count) 条")
                     .font(Typo.headline)
                     .foregroundStyle(Palette.ink)
-                Text("启用 \(enabledCount) 条 · 共 \(kindSources.count) 条")
+                Text(summaryDetail)
                     .font(Typo.micro)
                     .foregroundStyle(Palette.ink3)
             }
@@ -270,6 +283,15 @@ struct SourcesView: View {
             RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
                 .strokeBorder(Palette.line, lineWidth: 1)
         }
+    }
+
+    private var maintenanceHint: some View {
+        Text("「测一下全部」只测试当前分类里启用的源：普通源首轮 5 秒，Venera 12 秒；超时会自动用普通 20 秒、Venera 45 秒重试一次。仍超时只记为超时，不算失效、不会自动删除。")
+            .font(Typo.micro)
+            .foregroundStyle(Palette.ink3)
+            .lineSpacing(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
     }
 
     private func row(_ source: BookSource) -> some View {
@@ -312,10 +334,10 @@ struct SourcesView: View {
 
             HStack(spacing: 6) {
                 Circle()
-                    .fill(statusColor(status, enabled: source.enabled))
+                    .fill(statusColor(status, id: source.id, enabled: source.enabled))
                     .frame(width: 5, height: 5)
 
-                Text(statusText(status, enabled: source.enabled, checking: isChecking))
+                Text(statusText(status, id: source.id, enabled: source.enabled, checking: isChecking))
                     .font(Typo.micro)
                     .foregroundStyle(status == nil ? Palette.ink3 : Palette.ink2)
                     .lineLimit(1)
@@ -414,10 +436,20 @@ struct SourcesView: View {
 
     // MARK: 状态
 
-    private func statusText(_ status: SourceHealthStatus?, enabled: Bool, checking: Bool) -> String {
+    private func statusText(_ status: SourceHealthStatus?,
+                            id: String,
+                            enabled: Bool,
+                            checking: Bool) -> String {
         if checking { return "正在请求源站…" }
         guard let status else {
-            return enabled ? "未检测" : "已关闭"
+            guard enabled else { return "已关闭" }
+            if persistedFailedIDs.contains(id) {
+                return "上次检测明确失败，建议重测或关闭"
+            }
+            if persistedTimeoutIDs.contains(id) {
+                return "上次检测超时，建议稍后重测"
+            }
+            return "未检测"
         }
         switch status {
         case .ok(let ms, let count):
@@ -431,9 +463,13 @@ struct SourcesView: View {
         }
     }
 
-    private func statusColor(_ status: SourceHealthStatus?, enabled: Bool) -> Color {
+    private func statusColor(_ status: SourceHealthStatus?, id: String, enabled: Bool) -> Color {
         guard enabled else { return Palette.ink3.opacity(0.5) }
-        guard let status else { return Palette.ink3.opacity(0.6) }
+        guard let status else {
+            if persistedFailedIDs.contains(id) { return Palette.danger }
+            if persistedTimeoutIDs.contains(id) { return Color(hex: 0xC08A3E) }
+            return Palette.ink3.opacity(0.6)
+        }
         switch status {
         case .ok: return Color(hex: 0x4E8A5F)
         case .timeout: return Color(hex: 0xC08A3E)
@@ -451,6 +487,8 @@ struct SourcesView: View {
                 if lhs.enabled != rhs.enabled { return lhs.enabled && !rhs.enabled }
                 return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
             }
+            persistedFailedIDs = Set(((try? env.sources.invalidSources()) ?? []).map(\.id))
+            persistedTimeoutIDs = Set(((try? env.sources.timeoutSources()) ?? []).map(\.id))
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -615,8 +653,9 @@ struct SourcesView: View {
     /// 明确失败、且仍然启用的源。超时不算失败，不能一键删除。
     private var failedSources: [BookSource] {
         kindSources.filter { source in
-            guard source.enabled, let status = health[source.id] else { return false }
-            return status.isDefiniteFailure
+            guard source.enabled else { return false }
+            return persistedFailedIDs.contains(source.id)
+                || health[source.id]?.isDefiniteFailure == true
         }
     }
 
@@ -639,10 +678,20 @@ struct SourcesView: View {
     private func record(_ status: SourceHealthStatus, for source: BookSource) {
         let text: String
         switch status {
-        case .ok(let ms, let count): text = "ok \(ms)ms \(count)"
-        case .timeout: text = "timeout"
-        case .failed(let message): text = "failed: \(message)"
-        case .skipped(let reason): text = "skipped: \(reason)"
+        case .ok(let ms, let count):
+            text = "ok \(ms)ms \(count)"
+            persistedFailedIDs.remove(source.id)
+            persistedTimeoutIDs.remove(source.id)
+        case .timeout:
+            text = "timeout"
+            persistedFailedIDs.remove(source.id)
+            persistedTimeoutIDs.insert(source.id)
+        case .failed(let message):
+            text = "failed: \(message)"
+            persistedFailedIDs.insert(source.id)
+            persistedTimeoutIDs.remove(source.id)
+        case .skipped(let reason):
+            text = "skipped: \(reason)"
         }
         try? env.sources.markChecked(
             id: source.id,

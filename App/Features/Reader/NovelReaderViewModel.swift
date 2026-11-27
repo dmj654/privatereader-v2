@@ -22,6 +22,8 @@ final class NovelReaderViewModel: ObservableObject {
         let chapter: Int
         let style: ReaderStyle
         let theme: String
+        let purifyEnabled: Bool
+        let purifyRules: String
     }
 
     // 朗读
@@ -54,6 +56,13 @@ final class NovelReaderViewModel: ObservableObject {
     @Published var bookmarks: [Bookmark] = []
     @Published var isMenuVisible = false
     @Published var isDarkChrome = false
+
+    /// 正文净化：规则来自书源，开关按书保存在阅读器里。
+    /// 命中数不是装饰——用户要能判断是「规则生效了」还是「这段正文本来就没有广告」。
+    @Published private(set) var isPurifierEnabled = false
+    @Published private(set) var purifierHitCount = 0
+    @Published private(set) var purifierRuleCount = 0
+    private var purifier = Purifier(isEnabled: false, rules: [])
 
     /// 偏好只在阅读器活着时有意义，用 weak 防止它反向延长偏好对象的生命周期。
     private weak var preferences: ReaderPreferences?
@@ -120,6 +129,29 @@ final class NovelReaderViewModel: ObservableObject {
         if style != preferences.style { style = preferences.style }
         if theme != preferences.theme { theme = preferences.theme }
     }
+
+    /// 接上当前书源里的净化规则。规则为空时按钮明确不可用，不假装生效。
+    func configurePurifier(rules: [String], enabled: Bool) {
+        purifierRuleCount = rules.count
+        purifier = Purifier(isEnabled: enabled && !rules.isEmpty, rules: rules)
+        isPurifierEnabled = purifier.isEnabled
+        cachedAttributed = nil
+        cachedKey = nil
+        purifierHitCount = 0
+        repaginate()
+    }
+
+    func setPurifierEnabled(_ enabled: Bool) {
+        guard purifierRuleCount > 0 else { return }
+        purifier.isEnabled = enabled
+        isPurifierEnabled = enabled
+        cachedAttributed = nil
+        cachedKey = nil
+        purifierHitCount = 0
+        repaginate()
+    }
+
+    var hasPurifierRules: Bool { purifierRuleCount > 0 }
 
     func load() {
         isLoading = true
@@ -233,7 +265,7 @@ final class NovelReaderViewModel: ObservableObject {
 
     /// 章标题作为正文的第一段参与排版，而不是浮在正文上方的装饰。
     /// 这样翻到本章第一页时标题自然出现在页首，分页也算得准，不会盖住文字。
-    private func attributedBody(for chapter: NovelChapter) -> NSAttributedString {
+    private func attributedBody(for chapter: NovelChapter, bodyOverride: String? = nil) -> NSAttributedString {
         let color = UIColor(theme.textColor)
         let result = NSMutableAttributedString()
 
@@ -253,7 +285,8 @@ final class NovelReaderViewModel: ObservableObject {
             ]
         ))
 
-        let body = ReaderStyle.normalizedBody(chapter.body.isEmpty ? "" : chapter.body)
+        let rawBody = bodyOverride ?? purifier.apply(to: chapter.body).text
+        let body = ReaderStyle.normalizedBody(chapter.body.isEmpty ? "" : rawBody)
         if !body.isEmpty {
             result.append(NSAttributedString(
                 string: body,
@@ -280,10 +313,18 @@ final class NovelReaderViewModel: ObservableObject {
         guard let chapter = currentChapter else { return nil }
         // 在线章节还没下载完：不要先排一个只有标题的空页，等正文到了一起排。
         if book.origin == .remote, chapter.body.isEmpty { return nil }
-        let key = CacheKey(chapter: chapterIndex, style: style, theme: theme.rawValue)
+        let key = CacheKey(
+            chapter: chapterIndex,
+            style: style,
+            theme: theme.rawValue,
+            purifyEnabled: purifier.isEnabled,
+            purifyRules: purifier.rules.joined(separator: "|")
+        )
         if key == cachedKey, let cached = cachedAttributed { return cached }
 
-        let built = attributedBody(for: chapter)
+        let outcome = purifier.apply(to: chapter.body)
+        purifierHitCount = outcome.hitCount
+        let built = attributedBody(for: chapter, bodyOverride: outcome.text)
         cachedAttributed = built
         cachedKey = key
         return built

@@ -404,16 +404,23 @@ struct OnlineComicView: View {
         default: autoSeconds = 0
         }
         restartAuto()
+        if autoSeconds > 0 {
+            showToast("自动翻页 \(autoSeconds) 秒/页")
+        } else {
+            showToast("自动翻页已关闭")
+        }
     }
 
     private func restartAuto() {
         autoTask?.cancel()
         guard autoSeconds > 0, !pages.isEmpty else { return }
 
-        autoTask = Task {
+        autoTask = Task { @MainActor in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(autoSeconds) * 1_000_000_000)
-                if Task.isCancelled { return }
+                let seconds = autoSeconds
+                guard seconds > 0 else { return }
+                try? await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
+                guard !Task.isCancelled else { return }
 
                 if autoPage + 1 < pages.count {
                     autoPage += 1
@@ -421,6 +428,8 @@ struct OnlineComicView: View {
                     moveChapter(1)
                     return
                 } else {
+                    autoSeconds = 0
+                    showToast("已到最后一话，自动翻页停止")
                     return
                 }
             }

@@ -94,6 +94,19 @@ final class RuleRunnerTests: XCTestCase {
         XCTAssertEqual(RuleRunner.string("id.content@text&&##广告##", html: html), "正文内容")
     }
 
+    func testPurifyCanBeDisabledToReadRawText() {
+        XCTAssertEqual(
+            RuleRunner.string("id.content@text##广告##", html: html, purify: false),
+            "正文广告内容",
+            "关闭净化时必须拿到未删改的原文"
+        )
+        XCTAssertEqual(
+            RuleRunner.string("id.content@text&&##广告##", html: html, purify: false),
+            "正文广告内容",
+            "串联净化段在关闭时也不能执行"
+        )
+    }
+
     func testDoublePipeFallsBack() {
         XCTAssertEqual(RuleRunner.string("class.missing@text||id.content@text", html: html), "正文广告内容")
     }

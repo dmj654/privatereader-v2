@@ -278,6 +278,7 @@ struct ComicReaderView: View {
         default: autoSeconds = 0
         }
         restartAuto()
+        showLocalToast(autoSeconds > 0 ? "自动翻页 \(autoSeconds) 秒/页" : "自动翻页已关闭")
     }
 
     private var pageCatalog: some View {
@@ -323,13 +324,17 @@ struct ComicReaderView: View {
     private func restartAuto() {
         autoTask?.cancel()
         guard autoSeconds > 0, mode == .page else { return }
-        autoTask = Task {
+        autoTask = Task { @MainActor in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(autoSeconds) * 1_000_000_000)
-                if Task.isCancelled { return }
+                let seconds = autoSeconds
+                guard seconds > 0 else { return }
+                try? await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
+                guard !Task.isCancelled else { return }
                 if index + 1 < pages.count {
                     index += 1
                 } else {
+                    autoSeconds = 0
+                    showLocalToast("已到最后一页，自动翻页停止")
                     return
                 }
             }

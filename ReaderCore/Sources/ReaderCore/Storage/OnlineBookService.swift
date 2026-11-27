@@ -226,10 +226,12 @@ public actor OnlineBookService {
 
     /// 取一章正文。缓存优先，缺了才请求；请求成功立刻落盘。
     /// - Parameter forceRefresh: 用户手动「重新加载」时传 true，跳过缓存。
+    /// - Parameter purify: false 时把未执行源内净化规则的原文落盘，阅读器再按开关净化。
     public func chapterBody(manifest: OnlineManifest,
                             source: LegadoSource,
                             index: Int,
-                            forceRefresh: Bool = false) async throws -> String {
+                            forceRefresh: Bool = false,
+                            purify: Bool = true) async throws -> String {
         guard manifest.chapters.indices.contains(index) else {
             throw SourceError.emptyContent
         }
@@ -238,7 +240,9 @@ public actor OnlineBookService {
             return cached
         }
 
-        let text = try await client.content(source: source, chapter: manifest.chapters[index])
+        let text = try await client.content(source: source,
+                                            chapter: manifest.chapters[index],
+                                            purify: purify)
         try library.storeChapterText(text, bookId: manifest.bookId, index: index)
         return text
     }

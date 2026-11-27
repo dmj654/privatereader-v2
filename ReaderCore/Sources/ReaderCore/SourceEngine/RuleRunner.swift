@@ -22,8 +22,13 @@ public enum RuleRunner {
     public static func string(_ rule: String,
                               html: String,
                               baseUrl: String = "",
-                              variables: [String: String] = [:]) -> String {
-        evaluateString(rule, html: html, baseUrl: baseUrl, variables: variables)
+                              variables: [String: String] = [:],
+                              purify: Bool = true) -> String {
+        evaluateString(rule,
+                       html: html,
+                       baseUrl: baseUrl,
+                       variables: variables,
+                       applyPurification: purify)
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -88,14 +93,19 @@ public enum RuleRunner {
     private static func evaluateString(_ rule: String,
                                        html: String,
                                        baseUrl: String,
-                                       variables: [String: String]) -> String {
+                                       variables: [String: String],
+                                       applyPurification: Bool = true) -> String {
         let resolved = applyVariables(rule, variables: variables)
         guard !resolved.isEmpty else { return "" }
 
         // `||` 备选：取第一个非空
         if resolved.contains("||") {
             for candidate in resolved.components(separatedBy: "||") {
-                let value = evaluateString(candidate, html: html, baseUrl: baseUrl, variables: [:])
+                let value = evaluateString(candidate,
+                                           html: html,
+                                           baseUrl: baseUrl,
+                                           variables: [:],
+                                           applyPurification: applyPurification)
                 if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     return value
                 }
@@ -108,12 +118,15 @@ public enum RuleRunner {
             var current = html
             for (index, segment) in resolved.components(separatedBy: "&&").enumerated() {
                 if segment.hasPrefix("##") {
-                    current = purify(segment, text: current)
+                    if applyPurification {
+                        current = purify(segment, text: current)
+                    }
                 } else {
                     current = evaluateString(segment,
                                              html: index == 0 ? html : current,
                                              baseUrl: baseUrl,
-                                             variables: [:])
+                                             variables: [:],
+                                             applyPurification: applyPurification)
                 }
             }
             return current
@@ -121,7 +134,7 @@ public enum RuleRunner {
 
         // 纯净化规则
         if resolved.hasPrefix("##") {
-            return purify(resolved, text: html)
+            return applyPurification ? purify(resolved, text: html) : html
         }
 
         // `选择器@属性##净化`：先取值，再对取到的文字做净化。
@@ -129,8 +142,12 @@ public enum RuleRunner {
         if let purifyStart = resolved.range(of: "##") {
             let base = String(resolved[..<purifyStart.lowerBound])
             let purifyPart = "##" + resolved[purifyStart.upperBound...]
-            let value = evaluateString(base, html: html, baseUrl: baseUrl, variables: [:])
-            return purify(purifyPart, text: value)
+            let value = evaluateString(base,
+                                       html: html,
+                                       baseUrl: baseUrl,
+                                       variables: [:],
+                                       applyPurification: applyPurification)
+            return applyPurification ? purify(purifyPart, text: value) : value
         }
 
         // 纯地址 / 未替换的模板：直接原样返回，别拿去当 CSS 选择器

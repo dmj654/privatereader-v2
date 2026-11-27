@@ -184,7 +184,11 @@ public actor SourceClient {
 
     // MARK: 正文
 
-    public func content(source: LegadoSource, chapter: OnlineChapter) async throws -> String {
+    /// - Parameter purify: false 时只取原始正文，不在抓取阶段执行源内净化规则。
+    ///   阅读器需要在「净化」开关关闭时看到未处理的原文，所以原始正文要能单独拿到。
+    public func content(source: LegadoSource,
+                        chapter: OnlineChapter,
+                        purify: Bool = true) async throws -> String {
         guard !source.ruleContent.content.isEmpty else { throw SourceError.emptyRule("正文") }
         var html = try await fetch(chapter.url, source: source)
         var parts: [String] = []
@@ -192,7 +196,10 @@ public actor SourceClient {
 
         // 正文也可能分页（nextContentUrl），最多跟 5 页
         for _ in 0..<5 {
-            let raw = RuleRunner.string(source.ruleContent.content, html: html, baseUrl: source.url)
+            let raw = RuleRunner.string(source.ruleContent.content,
+                                        html: html,
+                                        baseUrl: source.url,
+                                        purify: purify)
             let text = Self.plainText(from: raw)
             if !text.isEmpty { parts.append(text) }
 
