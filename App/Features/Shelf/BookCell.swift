@@ -5,6 +5,7 @@ struct BookCell: View {
     let book: Book
     let coverURL: URL?
     let progress: Double
+    var cachedChapterCount: Int? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -23,10 +24,18 @@ struct BookCell: View {
                 .lineLimit(1)
                 .padding(.top, 8)
 
-            Text(progressText)
-                .font(.system(size: 10.5).monospacedDigit())
-                .foregroundStyle(progress > 0 ? Palette.accent : Palette.ink3.opacity(0.8))
-                .padding(.top, 5)
+            HStack(spacing: 4) {
+                Text(progressText)
+                    .font(.system(size: 10.5).monospacedDigit())
+                    .foregroundStyle(progress > 0 ? Palette.accent : Palette.ink3.opacity(0.8))
+                if let cachedChapterCount, cachedChapterCount > 0 {
+                    Text("· 缓存 \(cachedChapterCount) 章")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Palette.ink3)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.top, 5)
         }
     }
 

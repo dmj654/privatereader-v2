@@ -34,6 +34,7 @@ struct ShelfView: View {
 
     @State private var books: [Book] = []
     @State private var progressByBook: [String: Double] = [:]
+    @State private var cachedChaptersByBook: [String: Int] = [:]
     @State private var filter: ShelfFilter = .all
     @State private var sort: ShelfSort = .lastRead
     @State private var groups: [BookGroup] = []
@@ -496,7 +497,8 @@ struct ShelfView: View {
                         BookCell(
                             book: book,
                             coverURL: env.library.absoluteCoverURL(for: book),
-                            progress: progressByBook[book.id] ?? 0
+                            progress: progressByBook[book.id] ?? 0,
+                            cachedChapterCount: cachedChaptersByBook[book.id]
                         )
                         .contentShape(Rectangle())
                         .onTapGesture { open(book) }
@@ -522,10 +524,16 @@ struct ShelfView: View {
             groups = try env.groups.all()
             books = try env.books.all()
             var map: [String: Double] = [:]
+            var cacheMap: [String: Int] = [:]
             for book in books {
                 map[book.id] = (try? env.progress.fetch(bookId: book.id))?.percent ?? 0
+                if book.origin == .remote {
+                    let count = env.onlineReading.cachedChapterCount(for: book)
+                    if count > 0 { cacheMap[book.id] = count }
+                }
             }
             progressByBook = map
+            cachedChaptersByBook = cacheMap
             backfillCoversIfNeeded()
         } catch {
             books = []

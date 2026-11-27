@@ -12,9 +12,12 @@ struct ReaderScrollTextView: UIViewRepresentable {
     var autoRunning: Bool
     var pointsPerSecond: CGFloat
     var resetToken: Int
+    var startToken: Int = 0
+    var initialProgress: Double = 0
     var onTap: (() -> Void)?
     var onExplain: ((String) -> Void)?
     var onPurify: ((String) -> Void)?
+    var onProgress: ((Double) -> Void)?
     var onReachBottom: (() -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -59,7 +62,14 @@ struct ReaderScrollTextView: UIViewRepresentable {
         context.coordinator.apply(resetToken: resetToken,
                                   autoRunning: autoRunning,
                                   pointsPerSecond: pointsPerSecond,
+                                  startToken: startToken,
+                                  initialProgress: initialProgress,
                                   onReachBottom: onReachBottom)
+        if context.coordinator.needsInitialOffset {
+            DispatchQueue.main.async {
+                context.coordinator.applyInitialOffset()
+            }
+        }
     }
 
     static func dismantleUIView(_ uiView: UITextView, coordinator: Coordinator) {
@@ -76,6 +86,11 @@ struct ReaderScrollTextView: UIViewRepresentable {
         private var hadSelection = false
         private var suppressNextTap = false
         private var onReachBottom: (() -> Void)?
+        private var wasRunning = false
+        private var lastReportedProgress: Double = -1
+        private var lastStartToken = -1
+        private var startProgress: Double = 0
+        fileprivate var needsInitialOffset = false
 
         init(_ parent: ReaderScrollTextView) {
             self.parent = parent
@@ -85,19 +100,46 @@ struct ReaderScrollTextView: UIViewRepresentable {
         func apply(resetToken: Int,
                    autoRunning: Bool,
                    pointsPerSecond: CGFloat,
+                   startToken: Int,
+                   initialProgress: Double,
                    onReachBottom: (() -> Void)?) {
+            if autoRunning, !wasRunning {
+                // 用户在章末停止过自动阅读，重新开启时应先允许触底回调，
+                // 否则会停在 maxOffset 无法继续下一章。
+                didReportBottom = false
+            }
+            wasRunning = autoRunning
+            if startToken != lastStartToken {
+                lastStartToken = startToken
+                startProgress = min(max(initialProgress, 0), 1)
+                needsInitialOffset = true
+            }
             self.autoRunning = autoRunning
             self.pointsPerSecond = max(pointsPerSecond, 0)
             self.onReachBottom = onReachBottom
             if resetToken != lastResetToken {
                 lastResetToken = resetToken
                 didReportBottom = false
+                lastReportedProgress = -1
             }
             if autoRunning, pointsPerSecond > 0 {
                 start()
             } else {
                 stop()
             }
+        }
+
+        func applyInitialOffset() {
+            guard needsInitialOffset, let view = linkOwner else { return }
+            guard view.text.isEmpty == false, view.contentSize.height > 0 else { return }
+            let maxOffset = max(view.contentSize.height - view.bounds.height
+                                + view.textContainerInset.bottom, 0)
+            guard maxOffset > 0 else {
+                needsInitialOffset = false
+                return
+            }
+            view.setContentOffset(CGPoint(x: 0, y: maxOffset * startProgress), animated: false)
+            needsInitialOffset = false
         }
 
         func attach(_ view: UITextView) {
@@ -123,13 +165,24 @@ struct ReaderScrollTextView: UIViewRepresentable {
             guard view.selectedRange.length == 0 else { return }
 
             let maxOffset = max(view.contentSize.height - view.bounds.height + view.textContainerInset.bottom, 0)
-            guard maxOffset > 0 else { return }
+            if maxOffset <= 0 {
+                // 很短的一章一屏就放得下，也要让自动阅读进入下一章；
+                // contentSize 为 0 时通常还没布局完成，不要误判。
+                guard view.contentSize.height > 0 else { return }
+                if !didReportBottom {
+                    didReportBottom = true
+                    parent.onProgress?(1)
+                    onReachBottom?()
+                }
+                return
+            }
 
             let delta = CGFloat(max(displayLink.targetTimestamp - displayLink.timestamp, 0))
             let next = min(view.contentOffset.y + pointsPerSecond * delta, maxOffset)
             if next >= maxOffset - 0.5 {
                 if !didReportBottom {
                     didReportBottom = true
+                    parent.onProgress?(1)
                     onReachBottom?()
                 }
             } else {
@@ -163,6 +216,18 @@ struct ReaderScrollTextView: UIViewRepresentable {
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
             if let view = scrollView as? UITextView { linkOwner = view }
+            let maxOffset = max(scrollView.contentSize.height - scrollView.bounds.height
+                                + scrollView.contentInset.bottom, 0)
+            let fraction: Double
+            if maxOffset > 0 {
+                fraction = min(max(Double(scrollView.contentOffset.y / maxOffset), 0), 1)
+            } else {
+                fraction = 0
+            }
+            if abs(fraction - lastReportedProgress) > 0.01 || (fraction == 1 && lastReportedProgress != 1) {
+                lastReportedProgress = fraction
+                parent.onProgress?(fraction)
+            }
         }
 
         func textView(_ textView: UITextView,

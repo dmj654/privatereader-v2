@@ -47,15 +47,26 @@ public actor OnlineBookService {
         )
     }
 
-    public func prepare(_ online: OnlineBook, source: LegadoSource) async throws -> OnlineBookBundle {
-        var detail = online
+    /// 详情页已经取过详情和目录时把结果传进来，避免为了打开阅读器再请求一遍。
+    /// 参数保持默认值，老调用点的行为不变。
+    public func prepare(_ online: OnlineBook,
+                        source: LegadoSource,
+                        knownDetail: OnlineBook? = nil,
+                        knownChapters: [OnlineChapter]? = nil) async throws -> OnlineBookBundle {
+        var detail = knownDetail ?? online
         // 详情页取不到就退回搜索结果里的字段：有目录照样能读。
-        if let enriched = try? await client.bookInfo(source: source, book: online) {
+        if knownDetail == nil,
+           let enriched = try? await client.bookInfo(source: source, book: online) {
             detail = enriched
         }
         if detail.coverUrl.isEmpty { detail.coverUrl = online.coverUrl }
 
-        let toc = try await client.chapters(source: source, book: detail)
+        let toc: [OnlineChapter]
+        if let knownChapters, !knownChapters.isEmpty {
+            toc = knownChapters
+        } else {
+            toc = try await client.chapters(source: source, book: detail)
+        }
         guard !toc.isEmpty else { throw SourceError.emptyRule("目录是空的") }
 
         let bookId = UUID().uuidString

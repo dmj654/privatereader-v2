@@ -21,6 +21,7 @@ private enum ReaderSheet: Identifiable {
     case settings(TypographySheet.Focus)
     case voice
     case sourceSwitch
+    case cache
 
     var id: String {
         switch self {
@@ -28,6 +29,7 @@ private enum ReaderSheet: Identifiable {
         case .settings(let focus): return "settings-\(focus == .theme ? "theme" : "full")"
         case .voice: return "voice"
         case .sourceSwitch: return "sourceSwitch"
+        case .cache: return "cache"
         }
     }
 }
@@ -79,6 +81,9 @@ struct NovelReaderView: View {
     @AppStorage("novel.autoScrollSpeed") private var autoScrollSpeed = 3.0
     @AppStorage("novel.layoutMode") private var layoutRaw = NovelLayoutMode.paged.rawValue
     @State private var scrollResetToken = 0
+    @State private var scrollStartToken = 0
+    /// 自动滚动时的卷内进度；关掉自动阅读后用它回到对应的翻页位置。
+    @State private var scrollProgress: Double = 0
 
     /// 长按选字后的两个入口。
     @State private var explainRequest: SelectionRequest?
@@ -139,7 +144,7 @@ struct NovelReaderView: View {
                         }
                     }
                 } else {
-                    if layoutMode == .scroll {
+                    if autoRunning && layoutMode == .scroll {
                         scrollArea(size: proxy.size)
                             .overlay {
                                 if model.isContentLoading {
@@ -214,9 +219,13 @@ struct NovelReaderView: View {
             .onChange(of: model.pageIndex) { _ in scheduleSpeechResumeCheck() }
             .onChange(of: model.chapterIndex) { _ in
                 scrollResetToken += 1
+                scrollProgress = 0
                 scheduleSpeechResumeCheck()
             }
             .onChange(of: layoutRaw) { _ in
+                if autoRunning, layoutMode == .paged {
+                    model.seekWithinChapter(to: scrollProgress)
+                }
                 stopAutoRead()
                 scrollResetToken += 1
                 if autoRunning, layoutMode == .paged {
@@ -298,6 +307,15 @@ struct NovelReaderView: View {
                 VoiceSheet(engine: speech)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+
+            case .cache:
+                CacheChaptersSheet(
+                    book: model.book,
+                    currentChapter: model.chapterIndex,
+                    chapterCount: model.chapters.count
+                )
+                .presentationDetents([.height(360), .medium])
+                .presentationDragIndicator(.visible)
 
             case .settings(let focus):
                 TypographySheet(
@@ -520,6 +538,8 @@ struct NovelReaderView: View {
                 autoRunning: autoRunning,
                 pointsPerSecond: scrollPointsPerSecond,
                 resetToken: scrollResetToken,
+                startToken: scrollStartToken,
+                initialProgress: scrollProgress,
                 onTap: {
                     withAnimation(.easeInOut(duration: 0.18)) {
                         model.isMenuVisible.toggle()
@@ -530,6 +550,9 @@ struct NovelReaderView: View {
                 },
                 onPurify: { text in
                     purifierRequest = SelectionRequest(text: text)
+                },
+                onProgress: { fraction in
+                    scrollProgress = fraction
                 },
                 onReachBottom: handleScrollReachedBottom
             )
@@ -542,12 +565,14 @@ struct NovelReaderView: View {
     private func handleScrollReachedBottom() {
         guard autoRunning else { return }
         guard model.chapterIndex + 1 < model.chapters.count else {
+            model.seekWithinChapter(to: 1)
             autoRunning = false
             showToast("已到全书末尾，自动阅读已停止")
             return
         }
         model.jump(toChapter: model.chapterIndex + 1)
         scrollResetToken += 1
+        scrollProgress = 0
     }
 
     // MARK: 点击区域（九宫格）
@@ -1123,13 +1148,23 @@ struct NovelReaderView: View {
 
     private func toggleAutoRead() {
         if autoRunning {
+            if layoutMode == .scroll {
+                model.seekWithinChapter(to: scrollProgress)
+            }
             autoRunning = false
             stopAutoRead()
-            showToast("自动阅读已停止")
+            showToast("自动阅读已停止，回到左右翻页")
             return
         }
 
         autoRunning = true
+        if layoutMode == .scroll {
+            // 从当前页开始滚，而不是每次开启都退回本章开头。
+            scrollProgress = model.pageCount > 1
+                ? Double(model.pageIndex) / Double(model.pageCount - 1)
+                : 0
+            scrollStartToken += 1
+        }
         if model.isMenuVisible {
             withAnimation(.easeInOut(duration: 0.18)) { model.isMenuVisible = false }
         }
@@ -1468,8 +1503,14 @@ struct NovelReaderView: View {
                 panelItem("slider.horizontal.3", "设置") {
                     sheet = .settings(.typography)
                 }
-                panelItem("hand.tap", "区域") {
-                    withAnimation(.easeInOut(duration: 0.2)) { editingZones = true }
+                if model.book.origin == .remote {
+                    panelItem("arrow.down.circle", "缓存") {
+                        sheet = .cache
+                    }
+                } else {
+                    panelItem("hand.tap", "区域") {
+                        withAnimation(.easeInOut(duration: 0.2)) { editingZones = true }
+                    }
                 }
             }
         }

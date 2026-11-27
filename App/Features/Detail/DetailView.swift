@@ -4,6 +4,7 @@ import ReaderCore
 struct DetailView: View {
     let book: Book
     @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var router: TabRouter
     @Environment(\.dismiss) private var dismiss
 
     @State private var progress: ReadingProgress?
@@ -32,6 +33,14 @@ struct DetailView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            router.detailActive = true
+            router.hidesTabBar = true
+        }
+        .onDisappear {
+            router.detailActive = false
+            router.hidesTabBar = false
+        }
         .task {
             progress = try? env.progress.fetch(bookId: book.id)
             groups = (try? env.groups.all()) ?? []
@@ -235,18 +244,20 @@ struct DetailView: View {
                         } label: {
                             HStack(spacing: 10) {
                                 Text(title)
-                                    .font(Typo.body)
+                                    .font(.system(size: 14.5))
                                     .foregroundStyle(Palette.ink2)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                 Spacer(minLength: 0)
                                 Image(systemName: "chevron.right")
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(Palette.ink3.opacity(0.6))
                             }
+                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                             .padding(.horizontal, Spacing.xl)
-                            .padding(.vertical, 14)
+                            .padding(.vertical, 2)
                             .background(Palette.surface)
+                            .contentShape(Rectangle())
                             .overlay(alignment: .bottom) {
                                 Rectangle().fill(Color(hex: 0xF3F6F9)).frame(height: 1)
                             }

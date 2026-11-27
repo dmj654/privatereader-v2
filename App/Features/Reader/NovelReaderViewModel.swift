@@ -458,6 +458,17 @@ final class NovelReaderViewModel: ObservableObject {
         jump(toChapter: ProgressMath.chapterIndex(fromPercent: percent, chapterCount: chapters.count))
     }
 
+    /// 从自动滚动切回翻页时，用本章的滚动比例落在一个合理的页码上。
+    /// 不是逐字节精确映射，但不会把用户丢回章节开头。
+    func seekWithinChapter(to fraction: Double) {
+        guard !pageRanges.isEmpty else { return }
+        let clamped = min(max(fraction, 0), 1)
+        pageIndex = min(Int((clamped * Double(pageCount - 1)).rounded()),
+                       max(pageRanges.count - 1, 0))
+        markManualMove()
+        persistProgress()
+    }
+
     func jump(toChapter index: Int) {
         guard chapters.indices.contains(index) else { return }
         markManualMove()

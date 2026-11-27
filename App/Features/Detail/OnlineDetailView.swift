@@ -6,11 +6,13 @@ struct OnlineDetailView: View {
     let online: OnlineBook
 
     @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var router: TabRouter
     @State private var detail: OnlineBook
     @State private var chapters: [OnlineChapter] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var shelfBook: Book?
+    @State private var readerBook: Book?
     @State private var showReader = false
     @State private var showCatalog = false
     @State private var pendingChapter: Int?
@@ -19,6 +21,7 @@ struct OnlineDetailView: View {
     @State private var isAdding = false
     @State private var isCaching = false
     @State private var cacheUsage: OnlineLibrary.CacheUsage?
+    @State private var cachedChapterCount = 0
     @State private var toast: String?
 
     init(online: OnlineBook) {
@@ -63,9 +66,27 @@ struct OnlineDetailView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            router.detailActive = true
+            router.hidesTabBar = true
+        }
+        .onDisappear {
+            router.detailActive = false
+            router.hidesTabBar = false
+        }
         .task { await load() }
-        .fullScreenCover(isPresented: $showReader) {
-            if let shelfBook {
+        .fullScreenCover(isPresented: $showReader, onDismiss: {
+            refreshCacheUsage()
+        }) {
+            if let readerBook {
+                if readerBook.type == .comic {
+                    OnlineComicView(book: readerBook, initialChapter: pendingChapter)
+                        .environmentObject(env)
+                } else {
+                    NovelReaderView(book: readerBook, env: env, initialChapter: pendingChapter)
+                        .environmentObject(env)
+                }
+            } else if let shelfBook {
                 if shelfBook.type == .comic {
                     OnlineComicView(book: shelfBook, initialChapter: pendingChapter)
                         .environmentObject(env)
@@ -131,8 +152,11 @@ struct OnlineDetailView: View {
 
                 HStack(spacing: 6) {
                     if !detail.wordCount.isEmpty { tag(detail.wordCount) }
-                    if !chapters.isEmpty { tag("\(chapters.count) 章") }
+                    if !chapters.isEmpty { tag("\(chapters.count) \(isComic ? "话" : "章")") }
                     if shelfBook != nil { tag("在追") }
+                    if cachedChapterCount > 0 {
+                        tag("已缓存 \(cachedChapterCount) \(isComic ? "话" : "章")")
+                    }
                 }
                 .padding(.top, 2)
             }
@@ -193,10 +217,10 @@ struct OnlineDetailView: View {
                 }
             }
 
-            if let shelfBook, !isComic {
+            if let cacheBook = readerBook ?? shelfBook, !isComic {
                 HStack(spacing: 9) {
                     Button {
-                        cacheAll(shelfBook)
+                        cacheAll(cacheBook)
                     } label: {
                         Text(isCaching ? "缓存中…" : "缓存全本")
                             .font(.system(size: 13, weight: .medium))
@@ -213,12 +237,12 @@ struct OnlineDetailView: View {
                     .buttonStyle(.plain)
                     .disabled(isCaching)
 
-                    if let usage = cacheUsage, usage.chapterCount > 0 {
-                        Text("已缓存 \(usage.chapterCount) 章 · \(usage.text)")
-                            .font(Typo.micro)
-                            .foregroundStyle(Palette.ink3)
-                            .frame(maxWidth: .infinity)
-                    }
+                    Text(cachedChapterCount > 0
+                         ? "已缓存 \(cachedChapterCount) 章 · \(cacheUsage?.text ?? "0 KB")"
+                         : "还没有缓存正文")
+                        .font(Typo.micro)
+                        .foregroundStyle(Palette.ink3)
+                        .frame(maxWidth: .infinity)
                 }
             }
         }
@@ -260,20 +284,22 @@ struct OnlineDetailView: View {
                     Button {
                         startReading(chapter: index)
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 9) {
                             Text("\(index + 1)")
-                                .font(.system(size: 10.5).monospacedDigit())
+                                .font(.system(size: 11.5).monospacedDigit())
                                 .foregroundStyle(Palette.ink3)
-                                .frame(width: 22, alignment: .trailing)
+                                .frame(width: 26, alignment: .trailing)
                             Text(chapter.name)
-                                .font(.system(size: 13))
+                                .font(.system(size: 14.5))
                                 .foregroundStyle(Palette.ink)
-                                .lineLimit(1)
+                                .lineLimit(2)
                             Spacer(minLength: 0)
                             Image(systemName: "play.circle")
-                                .font(.system(size: 12))
+                                .font(.system(size: 14))
                                 .foregroundStyle(Palette.accent.opacity(0.8))
                         }
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                        .padding(.vertical, 2)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -304,14 +330,15 @@ struct OnlineDetailView: View {
                     } label: {
                         HStack {
                             Text(chapter.name)
-                                .font(.system(size: 14))
+                                .font(.system(size: 14.5))
                                 .foregroundStyle(Palette.ink)
-                                .lineLimit(1)
+                                .lineLimit(2)
                             Spacer()
                             Image(systemName: "play.circle")
-                                .font(.system(size: 13))
+                                .font(.system(size: 14))
                                 .foregroundStyle(Palette.accent)
                         }
+                        .frame(minHeight: 44)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -333,13 +360,14 @@ struct OnlineDetailView: View {
     private func load() async {
         if let existing = findExisting() {
             shelfBook = existing
+            readerBook = existing
             chapters = (try? OnlineReadingService(
                 library: OnlineLibrary(paths: env.paths),
                 sources: env.sources,
                 client: env.sourceClient,
                 venera: env.veneraRuntime
             ).manifest(for: existing).chapters) ?? []
-            refreshCacheUsage()
+            refreshCacheUsage(for: existing)
             isLoading = false
             return
         }
@@ -402,61 +430,91 @@ struct OnlineDetailView: View {
     private func startReading(chapter: Int?) {
         guard !isOpening, !isAdding, !chapters.isEmpty else { return }
         pendingChapter = chapter
-        if shelfBook != nil {
+        // 阅读不是“加入书架”的副作用。已经入库的书可直接打开，其余只准备
+        // 临时 Book 和在线清单，退出后不会出现在书架里。
+        if let book = shelfBook ?? readerBook {
+            readerBook = book
             showReader = true
             return
         }
-        // 没加书架也可以直接读：先把书准备好，再打开对应章节。
         isOpening = true
-        addToShelf()
-    }
-
-    private func addToShelf() {
-        guard let source = resolveSource() else {
-            errorMessage = "这本书所属的书源已被删除或关闭。"
-            isOpening = false
-            return
-        }
-        isAdding = true
         Task {
             do {
-                let service = OnlineBookService(
-                    client: env.sourceClient,
-                    library: OnlineLibrary(paths: env.paths),
-                    venera: env.veneraRuntime,
-                    paths: env.paths
-                )
-                var target = detail
-                if target.bookUrl.isEmpty { target.bookUrl = online.bookUrl }
-                let bundle: OnlineBookBundle
-                switch source {
-                case .legado(let legado):
-                    bundle = try await service.prepare(target, source: legado)
-                case .venera(let script):
-                    bundle = try await service.prepareVenera(
-                        target, source: script, runtime: env.veneraRuntime
-                    )
-                }
-                try env.books.insert(bundle.book)
+                let book = try await prepareReaderBook()
                 await MainActor.run {
-                    let shouldOpen = isOpening
-                    shelfBook = bundle.book
-                    isAdding = false
+                    readerBook = book
                     isOpening = false
-                    if shouldOpen {
-                        showReader = true
-                    } else {
-                        showToast("已加入书架")
-                    }
+                    refreshCacheUsage(for: book)
+                    showReader = true
                 }
             } catch {
                 await MainActor.run {
-                    isAdding = false
                     isOpening = false
                     errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 }
             }
         }
+    }
+
+    private func prepareReaderBook() async throws -> Book {
+        guard let source = resolveSource() else {
+            throw SourceError.emptyRule("这本书所属的书源已被删除或关闭")
+        }
+        let service = OnlineBookService(
+            client: env.sourceClient,
+            library: OnlineLibrary(paths: env.paths),
+            venera: env.veneraRuntime,
+            paths: env.paths
+        )
+        var target = detail
+        if target.bookUrl.isEmpty { target.bookUrl = online.bookUrl }
+        let bundle: OnlineBookBundle
+        switch source {
+        case .legado(let legado):
+            bundle = try await service.prepare(
+                target,
+                source: legado,
+                knownDetail: target,
+                knownChapters: chapters
+            )
+        case .venera(let script):
+            bundle = try await service.prepareVenera(
+                target, source: script, runtime: env.veneraRuntime
+            )
+        }
+        return env.fallbackCoverIfNeeded(for: bundle.book)
+    }
+
+    private func addToShelf() {
+        guard !isAdding, !isOpening else { return }
+        isAdding = true
+        Task {
+            do {
+                let book = try await preparedBookForShelf()
+                if (try? env.books.fetch(id: book.id)) == nil {
+                    try env.books.insert(book)
+                }
+                await MainActor.run {
+                    shelfBook = book
+                    readerBook = book
+                    isAdding = false
+                    refreshCacheUsage(for: book)
+                    showToast("已加入书架")
+                }
+            } catch {
+                await MainActor.run {
+                    isAdding = false
+                    errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
+            }
+        }
+    }
+
+    /// 加入书架时优先复用刚才临时阅读的 Book，书 id、进度、封面都不会换一套。
+    private func preparedBookForShelf() async throws -> Book {
+        if let shelfBook { return shelfBook }
+        if let readerBook { return readerBook }
+        return try await prepareReaderBook()
     }
 
     private func cacheAll(_ book: Book) {
@@ -466,22 +524,23 @@ struct OnlineDetailView: View {
                 _ = try await env.chapterProvider.downloadAll(for: book)
                 await MainActor.run {
                     isCaching = false
-                    refreshCacheUsage()
+                    refreshCacheUsage(for: book)
                     showToast("缓存完成")
                 }
             } catch {
                 await MainActor.run {
                     isCaching = false
-                    refreshCacheUsage()
+                    refreshCacheUsage(for: book)
                     showToast("缓存中断：\(error.localizedDescription)")
                 }
             }
         }
     }
 
-    private func refreshCacheUsage() {
-        guard let shelfBook else { return }
-        cacheUsage = env.chapterProvider.cacheUsage(for: shelfBook)
+    private func refreshCacheUsage(for book: Book? = nil) {
+        guard let target = book ?? readerBook ?? shelfBook else { return }
+        cacheUsage = env.chapterProvider.cacheUsage(for: target)
+        cachedChapterCount = env.onlineReading.cachedChapterCount(for: target)
     }
 
     private func showToast(_ text: String) {

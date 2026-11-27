@@ -29,6 +29,7 @@ struct AutoScrollDriver: UIViewRepresentable {
 
     func updateUIView(_ uiView: FinderView, context: Context) {
         uiView.coordinator = context.coordinator
+        uiView.attachNow()
         context.coordinator.update(isRunning: isRunning,
                                    pointsPerSecond: pointsPerSecond,
                                    resetToken: resetToken,
@@ -44,6 +45,15 @@ struct AutoScrollDriver: UIViewRepresentable {
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
+            attachNow()
+        }
+
+        override func didMoveToSuperview() {
+            super.didMoveToSuperview()
+            attachNow()
+        }
+
+        func attachNow() {
             guard let coordinator else { return }
             coordinator.attach(scrollView: Self.enclosingScrollView(of: self))
         }
@@ -58,7 +68,7 @@ struct AutoScrollDriver: UIViewRepresentable {
         }
     }
 
-    final class Coordinator {
+    final class Coordinator: NSObject {
         private weak var scrollView: UIScrollView?
         private var link: CADisplayLink?
         private var isRunning = false
@@ -70,6 +80,9 @@ struct AutoScrollDriver: UIViewRepresentable {
         func attach(scrollView: UIScrollView?) {
             guard self.scrollView !== scrollView else { return }
             self.scrollView = scrollView
+            // SwiftUI 在切换菜单时可能换掉底层 UIScrollView；不能继续拿旧
+            // 的弱引用装作在滚，否则点中间收起菜单就会看起来“自动停了”。
+            didReportBottom = false
             guard scrollView != nil else {
                 stop()
                 return
@@ -81,9 +94,13 @@ struct AutoScrollDriver: UIViewRepresentable {
                     pointsPerSecond: CGFloat,
                     resetToken: Int,
                     onReachBottom: (() -> Void)?) {
+            let started = isRunning && !self.isRunning
             self.isRunning = isRunning
             self.pointsPerSecond = max(pointsPerSecond, 0)
             self.onReachBottom = onReachBottom
+            if started {
+                didReportBottom = false
+            }
 
             if resetToken != lastResetToken {
                 lastResetToken = resetToken
@@ -117,7 +134,14 @@ struct AutoScrollDriver: UIViewRepresentable {
                 scrollView.contentSize.height - scrollView.bounds.height + scrollView.contentInset.bottom,
                 0
             )
-            guard maxOffset > 0 else { return }
+            if maxOffset <= 0 {
+                guard scrollView.contentSize.height > 0 else { return }
+                if !didReportBottom {
+                    didReportBottom = true
+                    onReachBottom?()
+                }
+                return
+            }
 
             let delta = CGFloat(max(displayLink.targetTimestamp - displayLink.timestamp, 0))
             let next = min(scrollView.contentOffset.y + pointsPerSecond * delta, maxOffset)

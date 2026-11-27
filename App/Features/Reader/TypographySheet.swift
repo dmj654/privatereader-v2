@@ -208,7 +208,7 @@ struct TypographySheet: View {
                 .font(.system(size: 13.5, weight: .semibold))
                 .foregroundStyle(Palette.ink2)
 
-            settingRow("阅读方式") {
+            settingRow("自动阅读方式") {
                 Picker("", selection: $layoutRaw) {
                     ForEach(NovelLayoutMode.allCases) { item in
                         Text(item.title).tag(item.rawValue)
@@ -217,6 +217,11 @@ struct TypographySheet: View {
                 .pickerStyle(.segmented)
                 .frame(width: 150)
             }
+
+            Text("仅自动阅读时使用；停止自动阅读后回到左右翻页。")
+                .font(.system(size: 11))
+                .foregroundStyle(Palette.ink3)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             rowDivider
 

@@ -68,33 +68,43 @@ final class AppEnvironment: ObservableObject {
     }
 
     /// 老版本加入书架时没有落封面。书架出现时按需补一次，不阻塞列表。
+    /// 源站没有封面规则或封面下载失败时，用书名/作者生成一张本地封面。
     func backfillCover(for book: Book) async -> Book? {
         guard book.origin == .remote, book.coverPath == nil else { return nil }
-        guard let manifest = try? onlineReading.manifest(for: book),
-              !manifest.coverUrl.isEmpty,
-              let record = try? sources.fetch(id: manifest.sourceId),
-              let target = SourceImportService(repo: sources).target(from: record) else {
-            return nil
+
+        var relative: String?
+        if let manifest = try? onlineReading.manifest(for: book),
+           !manifest.coverUrl.isEmpty,
+           let record = try? sources.fetch(id: manifest.sourceId),
+           let target = SourceImportService(repo: sources).target(from: record) {
+            let headers: [String: String]
+            let baseURL: String?
+            switch target {
+            case .legado(let source):
+                headers = sourceClient.imageHeaders(source: source)
+                baseURL = source.url
+            case .venera:
+                headers = veneraRuntime.imageHeaders
+                baseURL = nil
+            }
+            relative = await OnlineCoverStore.download(
+                urlString: manifest.coverUrl,
+                baseURL: baseURL,
+                headers: headers,
+                bookID: book.id,
+                paths: paths
+            )
         }
 
-        let headers: [String: String]
-        let baseURL: String?
-        switch target {
-        case .legado(let source):
-            headers = sourceClient.imageHeaders(source: source)
-            baseURL = source.url
-        case .venera:
-            headers = veneraRuntime.imageHeaders
-            baseURL = nil
+        if relative == nil {
+            relative = GeneratedCoverStore.write(
+                title: book.title,
+                author: book.author,
+                bookID: book.id,
+                paths: paths
+            )
         }
-
-        guard let relative = await OnlineCoverStore.download(
-            urlString: manifest.coverUrl,
-            baseURL: baseURL,
-            headers: headers,
-            bookID: book.id,
-            paths: paths
-        ) else { return nil }
+        guard let relative else { return nil }
 
         var updated = book
         updated.coverPath = relative
@@ -103,6 +113,20 @@ final class AppEnvironment: ObservableObject {
         } catch {
             return nil
         }
+        return updated
+    }
+
+    /// 给还没有写入数据库的临时阅读书补封面；不会触发入库。
+    func fallbackCoverIfNeeded(for book: Book) -> Book {
+        guard book.origin == .remote, book.coverPath == nil else { return book }
+        guard let relative = GeneratedCoverStore.write(
+            title: book.title,
+            author: book.author,
+            bookID: book.id,
+            paths: paths
+        ) else { return book }
+        var updated = book
+        updated.coverPath = relative
         return updated
     }
 }

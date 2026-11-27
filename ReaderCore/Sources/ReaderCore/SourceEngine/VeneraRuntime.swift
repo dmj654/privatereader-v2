@@ -407,7 +407,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.7.9';")
+        context.evaluateScript("globalThis.appVersion = '1.8.0';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 
@@ -1064,3 +1064,4 @@ private final class VeneraHTMLStore {
         documents.removeValue(forKey: key)
     }
 }
+

@@ -113,6 +113,38 @@ public final class OnlineReadingService: @unchecked Sendable {
         library.cacheSize(bookId: book.id)
     }
 
+    /// 已缓存的正文 / 漫画话数。正文缓存目录按 `body.txt` 计数；漫画图片
+    /// 存在 `Cache/<bookId>/online/<chapter>/`，只看非空目录，不把空占位算进去。
+    public func cachedChapterCount(for book: Book) -> Int {
+        guard let manifest = try? manifest(for: book) else { return 0 }
+        if book.type == .comic {
+            let root = library.paths.cache
+                .appendingPathComponent(book.id, isDirectory: true)
+                .appendingPathComponent("online", isDirectory: true)
+            let directories = (try? FileManager.default.contentsOfDirectory(
+                at: root,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            )) ?? []
+            var count = 0
+            for directory in directories {
+                guard (try? directory.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
+                let files = (try? FileManager.default.contentsOfDirectory(
+                    at: directory,
+                    includingPropertiesForKeys: [.isRegularFileKey],
+                    options: [.skipsHiddenFiles]
+                )) ?? []
+                if files.contains(where: {
+                    (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+                }) {
+                    count += 1
+                }
+            }
+            return min(count, manifest.chapters.count)
+        }
+        return min(library.cacheSize(bookId: book.id).chapterCount, manifest.chapters.count)
+    }
+
     public func cachedChapterIndices(for book: Book) -> [Int] {
         guard let manifest = try? manifest(for: book) else { return [] }
         return library.cachedChapterIndices(bookId: book.id, chapterCount: manifest.chapters.count)
@@ -120,6 +152,48 @@ public final class OnlineReadingService: @unchecked Sendable {
 
     public func clearCache(for book: Book) {
         library.clearCache(bookId: book.id)
+    }
+
+    /// 从 `start` 开始缓存 `count` 章（包含已缓存的，已缓存的只报进度不重复下载）。
+    /// 只用于小说正文；漫画请在漫画阅读页缓存图片。
+    @discardableResult
+    public func downloadChapters(for book: Book,
+                                 from start: Int,
+                                 count: Int,
+                                 progress: (@Sendable (Int, Int) -> Void)? = nil) async throws -> Int {
+        let manifest = try manifest(for: book)
+        guard !manifest.chapters.isEmpty else { return 0 }
+        let lower = max(start, 0)
+        guard lower < manifest.chapters.count else { return 0 }
+        let upper = min(lower + max(count, 1) - 1, manifest.chapters.count - 1)
+        let total = upper - lower + 1
+
+        guard let source = try resolveTarget(manifest.sourceId) else {
+            throw SourceError.emptyRule("书源已被删除")
+        }
+        if case .venera = source {
+            throw VeneraEngineError.unsupported("漫画请在阅读页里缓存章节。")
+        }
+        guard let legado = source.legadoSource else {
+            throw SourceError.emptyRule("书源已被删除")
+        }
+
+        let service = OnlineBookService(client: client, library: library, venera: venera)
+        var downloaded = 0
+        for (done, index) in (lower...upper).enumerated() {
+            try Task.checkCancellation()
+            if !library.hasChapter(bookId: manifest.bookId, index: index) {
+                _ = try await service.chapterBody(
+                    manifest: manifest,
+                    source: legado,
+                    index: index,
+                    purify: false
+                )
+                downloaded += 1
+            }
+            progress?(done + 1, total)
+        }
+        return downloaded
     }
 
     /// 下载整本：逐章拉取，已缓存跳过。返回实际下载章数。

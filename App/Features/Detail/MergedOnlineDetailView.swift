@@ -68,13 +68,15 @@ struct MergedOnlineDetailView: View {
                     .shadow(color: Shadow.card, radius: 8, y: 3)
             }
         }
-        .fullScreenCover(isPresented: $showReader) {
-            if let shelfBook = model.shelfBook {
-                if shelfBook.type == .comic {
-                    OnlineComicView(book: shelfBook, initialChapter: pendingChapter)
+        .fullScreenCover(isPresented: $showReader, onDismiss: {
+            model.refreshCacheCount(env: env)
+        }) {
+            if let readerBook = model.readerBook ?? model.shelfBook {
+                if readerBook.type == .comic {
+                    OnlineComicView(book: readerBook, initialChapter: pendingChapter)
                         .environmentObject(env)
                 } else {
-                    NovelReaderView(book: shelfBook, env: env, initialChapter: pendingChapter)
+                    NovelReaderView(book: readerBook, env: env, initialChapter: pendingChapter)
                         .environmentObject(env)
                 }
             }
@@ -111,6 +113,9 @@ struct MergedOnlineDetailView: View {
                 HStack(spacing: 6) {
                     if !model.chapters.isEmpty {
                         tag("\(model.chapters.count) \(book.isComic ? "话" : "章")")
+                    }
+                    if model.cachedChapterCount > 0 {
+                        tag("已缓存 \(model.cachedChapterCount) \(book.isComic ? "话" : "章")")
                     }
                     tag("\(book.entries.count) 个源")
                 }
@@ -199,14 +204,14 @@ struct MergedOnlineDetailView: View {
             Button {
                 startReading(chapter: nil)
             } label: {
-                if model.isAdding {
+                if model.isPreparing || model.isAdding {
                     ProgressView().tint(.white)
                 } else {
                     Text("阅读")
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(model.isAdding || model.chosen == nil || model.chapters.isEmpty)
+            .disabled(model.isPreparing || model.isAdding || model.chosen == nil || model.chapters.isEmpty)
 
             if model.shelfBook == nil {
                 Button {
@@ -224,7 +229,7 @@ struct MergedOnlineDetailView: View {
                         }
                 }
                 .buttonStyle(.plain)
-                .disabled(model.isAdding || model.chosen == nil)
+                .disabled(model.isPreparing || model.isAdding || model.chosen == nil)
             }
         }
     }
@@ -269,20 +274,22 @@ struct MergedOnlineDetailView: View {
                         Button {
                             startReading(chapter: index)
                         } label: {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 9) {
                                 Text("\(index + 1)")
-                                    .font(.system(size: 10.5).monospacedDigit())
+                                    .font(.system(size: 11.5).monospacedDigit())
                                     .foregroundStyle(Palette.ink3)
-                                    .frame(width: 22, alignment: .trailing)
+                                    .frame(width: 26, alignment: .trailing)
                                 Text(chapter.name)
-                                    .font(.system(size: 13))
+                                    .font(.system(size: 14.5))
                                     .foregroundStyle(Palette.ink)
-                                    .lineLimit(1)
+                                    .lineLimit(2)
                                 Spacer(minLength: 0)
                                 Image(systemName: "play.circle")
-                                    .font(.system(size: 12))
+                                    .font(.system(size: 14))
                                     .foregroundStyle(Palette.accent.opacity(0.8))
                             }
+                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                            .padding(.vertical, 2)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -322,14 +329,16 @@ struct MergedOnlineDetailView: View {
                     } label: {
                         HStack {
                             Text(chapter.name)
-                                .font(.system(size: 14))
+                                .font(.system(size: 14.5))
                                 .foregroundStyle(Palette.ink)
-                                .lineLimit(1)
+                                .lineLimit(2)
                             Spacer()
                             Image(systemName: "play.circle")
-                                .font(.system(size: 13))
+                                .font(.system(size: 14))
                                 .foregroundStyle(Palette.accent.opacity(0.8))
                         }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                 }
             }
@@ -398,10 +407,9 @@ struct MergedOnlineDetailView: View {
 
     private func startReading(chapter: Int?) {
         pendingChapter = chapter
-        isOpening = true
         Task {
-            if let book = await model.ensureShelf(env: env) {
-                model.shelfBook = book
+            isOpening = true
+            if let book = await model.prepareForReading(env: env) {
                 isOpening = false
                 showReader = true
             } else {
@@ -427,8 +435,12 @@ final class MergedDetailModel: ObservableObject {
     @Published var lastChapter = ""
     @Published var isLoading = true
     @Published var isAdding = false
+    @Published var isPreparing = false
     @Published var errorMessage: String?
     @Published var shelfBook: Book?
+    /// 只用于阅读、不写入书架的临时 Book；加入书架时会复用同一个 id。
+    @Published var readerBook: Book?
+    @Published var cachedChapterCount = 0
 
     private var source: SearchTarget?
 
@@ -457,6 +469,10 @@ final class MergedDetailModel: ObservableObject {
             lastChapter = cached.lastChapter
             intro = cached.intro
             shelfBook = findExisting(cached.chosen, env: env)
+            readerBook = shelfBook
+            if let readerBook {
+                cachedChapterCount = env.onlineReading.cachedChapterCount(for: readerBook)
+            }
             isLoading = false
             return
         }
@@ -465,6 +481,8 @@ final class MergedDetailModel: ObservableObject {
         errorMessage = nil
         chosen = nil
         chapters = []
+        readerBook = nil
+        cachedChapterCount = 0
 
         let ordered = orderedEntries(preferred: preferred)
         var candidates: [(OnlineBook, SearchTarget, [OnlineChapter])] = []
@@ -506,6 +524,11 @@ final class MergedDetailModel: ObservableObject {
             if await canRead(source: candidate.1, entry: candidate.0,
                              chapter: candidate.2[0], env: env) {
                 apply(candidate.0, source: candidate.1, chapters: candidate.2)
+                shelfBook = findExisting(candidate.0, env: env)
+                readerBook = shelfBook
+                if let readerBook {
+                    cachedChapterCount = env.onlineReading.cachedChapterCount(for: readerBook)
+                }
                 saveToCache()
                 isLoading = false
                 return
@@ -515,6 +538,11 @@ final class MergedDetailModel: ObservableObject {
         if let fallback = candidates.first {
             // 都读不了也别让页面空着：给章节最多的那个，读的时候再报具体错误。
             apply(fallback.0, source: fallback.1, chapters: fallback.2)
+            shelfBook = findExisting(fallback.0, env: env)
+            readerBook = shelfBook
+            if let readerBook {
+                cachedChapterCount = env.onlineReading.cachedChapterCount(for: readerBook)
+            }
             saveToCache()
             isLoading = false
         } else {
@@ -527,22 +555,34 @@ final class MergedDetailModel: ObservableObject {
 
     func pick(sourceId: String, env: AppEnvironment) async {
         await load(env: env, preferred: sourceId)
+        readerBook = nil
         if chosen != nil { saveToCache() }
     }
 
-    /// 加入书架（已加过就复用那本）。返回可用于打开阅读器的 Book。
-    func ensureShelf(env: AppEnvironment) async -> Book? {
+    func refreshCacheCount(env: AppEnvironment) {
+        guard let target = readerBook ?? shelfBook else {
+            cachedChapterCount = 0
+            return
+        }
+        cachedChapterCount = env.onlineReading.cachedChapterCount(for: target)
+    }
+
+    /// 打开阅读器：没有加入书架时只准备临时清单，不插数据库。
+    func prepareForReading(env: AppEnvironment) async -> Book? {
+        if let readerBook { return readerBook }
         if let shelfBook { return shelfBook }
         guard let chosen, let source else {
             errorMessage = "还没有选中可用的源。"
             return nil
         }
 
-        isAdding = true
-        defer { isAdding = false }
+        isPreparing = true
+        defer { isPreparing = false }
 
         if let existing = findExisting(chosen, env: env) {
             shelfBook = existing
+            readerBook = existing
+            cachedChapterCount = env.onlineReading.cachedChapterCount(for: existing)
             return existing
         }
 
@@ -556,15 +596,52 @@ final class MergedDetailModel: ObservableObject {
             let bundle: OnlineBookBundle
             switch source {
             case .legado(let legado):
-                bundle = try await service.prepare(chosen, source: legado)
+                bundle = try await service.prepare(
+                    chosen,
+                    source: legado,
+                    knownDetail: chosen,
+                    knownChapters: chapters
+                )
             case .venera(let script):
                 bundle = try await service.prepareVenera(
                     chosen, source: script, runtime: env.veneraRuntime
                 )
             }
-            try env.books.insert(bundle.book)
-            shelfBook = bundle.book
-            return bundle.book
+            let book = env.fallbackCoverIfNeeded(for: bundle.book)
+            readerBook = book
+            cachedChapterCount = env.onlineReading.cachedChapterCount(for: book)
+            return book
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return nil
+        }
+    }
+
+    /// 加入书架（已加过就复用那本）。阅读器先用临时 Book，用户点“加入书架”
+    /// 时才把同一个 id 写进数据库，进度和封面不丢。
+    func ensureShelf(env: AppEnvironment) async -> Book? {
+        if let shelfBook { return shelfBook }
+        isAdding = true
+        defer { isAdding = false }
+        if let readerBook {
+            do {
+                if (try? env.books.fetch(id: readerBook.id)) == nil {
+                    try env.books.insert(readerBook)
+                }
+                shelfBook = readerBook
+                return readerBook
+            } catch {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                return nil
+            }
+        }
+        guard let book = await prepareForReading(env: env) else { return nil }
+        do {
+            if (try? env.books.fetch(id: book.id)) == nil {
+                try env.books.insert(book)
+            }
+            shelfBook = book
+            return book
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             return nil
@@ -618,6 +695,9 @@ final class MergedDetailModel: ObservableObject {
         self.source = source
         sourceName = source.name
         self.chapters = chapters
+        readerBook = nil
+        shelfBook = nil
+        cachedChapterCount = 0
         name = entry.name.isEmpty ? book.name : entry.name
         author = entry.author.isEmpty ? book.author : entry.author
         coverUrl = entry.coverUrl.isEmpty ? book.coverUrl : entry.coverUrl
