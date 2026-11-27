@@ -17,8 +17,7 @@ struct ReaderScrollTextView: UIViewRepresentable {
     var dismissToken: Int = 0
     var onTap: (() -> Void)?
     var onSelectionChanged: ((String) -> Void)?
-    var onExplain: ((String) -> Void)?
-    var onPurify: ((String) -> Void)?
+    var onSelectionAction: ((ReaderSelectionAction, String) -> Void)?
     var onProgress: ((Double) -> Void)?
     var onReachBottom: (() -> Void)?
 
@@ -247,8 +246,11 @@ struct ReaderScrollTextView: UIViewRepresentable {
         func textView(_ textView: UITextView,
                       editMenuForTextIn range: NSRange,
                       suggestedActions: [UIMenuElement]) -> UIMenu? {
-            guard range.length > 0 else { return nil }
-            return UIMenu(children: [])
+            guard range.length > 0,
+                  let handler = parent.onSelectionAction else { return nil }
+            let text = (textView.text as NSString).substring(with: range)
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return ReaderSelectionMenu.build(textView: textView, text: text, handler: handler)
         }
     }
 }

@@ -195,7 +195,7 @@ struct ComicDisplaySheet: View {
                             VStack(alignment: .leading, spacing: 10) {
                                 label("自动阅读")
                                 HStack(spacing: 8) {
-                                    ForEach([3, 5, 10], id: \.self) { seconds in
+                                    ForEach([2, 3, 5, 10], id: \.self) { seconds in
                                         Button {
                                             autoPageSeconds = seconds
                                         } label: {

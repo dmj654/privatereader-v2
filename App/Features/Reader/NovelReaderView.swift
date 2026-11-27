@@ -67,6 +67,8 @@ struct NovelReaderView: View {
     @State private var incomingText: NSAttributedString?
     @State private var incomingDirection: Int = 1
     @State private var viewWidth: CGFloat = 390
+    /// 首次打开时让正文轻轻淡入并归位，避免整页文字“硬切”出现。
+    @State private var contentRevealed = false
     @State private var scrubValue: Double?
     @State private var editingZones = false
     @StateObject private var speech = SpeechEngine()
@@ -148,21 +150,25 @@ struct NovelReaderView: View {
                         }
                     }
                 } else {
-                    if autoRunning && layoutMode == .scroll {
-                        scrollArea(size: proxy.size)
-                            .overlay {
-                                if model.isContentLoading {
-                                    loadingBadge
+                    Group {
+                        if autoRunning && layoutMode == .scroll {
+                            scrollArea(size: proxy.size)
+                                .overlay {
+                                    if model.isContentLoading {
+                                        loadingBadge
+                                    }
                                 }
-                            }
-                    } else {
-                        pageArea(size: proxy.size)
-                            .overlay {
-                                if model.isContentLoading {
-                                    loadingBadge
+                        } else {
+                            pageArea(size: proxy.size)
+                                .overlay {
+                                    if model.isContentLoading {
+                                        loadingBadge
+                                    }
                                 }
-                            }
+                        }
                     }
+                    .opacity(contentRevealed ? 1 : 0)
+                    .scaleEffect(contentRevealed ? 1 : 1.03)
                 }
 
                 if model.isMenuVisible && !editingZones {
@@ -196,14 +202,6 @@ struct NovelReaderView: View {
             // 退出时整页（包括菜单）一起走，才有"被推回去"的实感
             .offset(x: exitOffset)
             .statusBarHidden(model.isMenuVisible == false && !editingZones)
-            .overlay(alignment: .bottom) {
-                if let selectedText, !selectedText.isEmpty {
-                    selectionActionBar(text: selectedText)
-                        .padding(.horizontal, 22)
-                        .padding(.bottom, 26)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
             .overlay(alignment: .topLeading) {
                 // 加载失败时菜单不可达，必须留一个明确的返回入口，
                 // 否则用户会卡在"这一章没打开"上，怎么划都出不去。
@@ -228,6 +226,9 @@ struct NovelReaderView: View {
             }
             .onAppear { viewWidth = proxy.size.width }
             .onChange(of: proxy.size) { viewWidth = $0.width }
+            .onChange(of: model.isLoading) { loading in
+                if !loading { revealContentIfNeeded() }
+            }
             .onChange(of: model.pageIndex) { _ in scheduleSpeechResumeCheck() }
             .onChange(of: model.chapterIndex) { _ in
                 scrollResetToken += 1
@@ -252,6 +253,7 @@ struct NovelReaderView: View {
             model.attach(preferences: prefs)
             configurePurifier(for: model.book)
             model.load()
+            if !model.isLoading { revealContentIfNeeded() }
         }
         // 切后台也落一次盘：用户常常按 Home 键离开，而不是点返回。
         .onChange(of: scenePhase) { phase in
@@ -429,7 +431,10 @@ struct NovelReaderView: View {
                 }
                 .opacity(contentOpacity)
             }
-            .simultaneousGesture(swipeGesture)
+            .simultaneousGesture(
+                swipeGesture,
+                including: (selectedText == nil && !editingZones) ? .all : .none
+            )
             .onChange(of: model.style) { _ in model.repaginate() }
 
             footerRow
@@ -509,7 +514,8 @@ struct NovelReaderView: View {
                             size: content.size
                         )
                     },
-                    onSelectionChanged: selectionChanged
+                    onSelectionChanged: selectionChanged,
+                    onSelectionAction: handleSelectionAction
                 )
                 .padding(.horizontal, model.style.marginHorizontal)
                 .padding(.top, model.style.marginTop)
@@ -575,6 +581,7 @@ struct NovelReaderView: View {
                     }
                 },
                 onSelectionChanged: selectionChanged,
+                onSelectionAction: handleSelectionAction,
                 onProgress: { fraction in
                     scrollProgress = fraction
                 },
@@ -629,63 +636,26 @@ struct NovelReaderView: View {
         dismissSelectionToken += 1
     }
 
-    private func selectionActionBar(text: String) -> some View {
-        HStack(spacing: 0) {
-            selectionAction("复制", symbol: "doc.on.doc") {
-                UIPasteboard.general.string = text
-                clearSelection()
-            }
-            selectionDivider
-            selectionAction("解释", symbol: "text.magnifyingglass") {
-                clearSelection()
-                explainRequest = SelectionRequest(text: text)
-            }
-            selectionDivider
-            selectionAction("净化", symbol: "eraser.line.dashed") {
-                clearSelection()
-                purifierRequest = SelectionRequest(text: text)
-            }
-            selectionDivider
-            selectionAction("搜索网页", symbol: "safari") {
-                clearSelection()
-                searchWeb(text)
-            }
+    private func revealContentIfNeeded() {
+        guard !contentRevealed else { return }
+        withAnimation(.easeOut(duration: 0.42)) {
+            contentRevealed = true
         }
-        .padding(.vertical, 7)
-        .padding(.horizontal, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .fill(model.theme.chromeSurface.opacity(0.98))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .strokeBorder(model.theme.textColor.opacity(0.10), lineWidth: 1)
-        }
-        .shadow(color: Color.black.opacity(0.16), radius: 18, y: 8)
     }
 
-    private func selectionAction(_ title: String,
-                                  symbol: String,
-                                  action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 5) {
-                Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .medium))
-                Text(title)
-                    .font(.system(size: 11, weight: .medium))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(model.theme.textColor)
-            .frame(minWidth: 62, minHeight: 48)
-            .contentShape(Rectangle())
+    /// 系统浮层菜单只回传这四种动作，真正的业务逻辑仍留在阅读页。
+    private func handleSelectionAction(_ action: ReaderSelectionAction, text: String) {
+        clearSelection()
+        switch action {
+        case .copy:
+            UIPasteboard.general.string = text
+        case .explain:
+            explainRequest = SelectionRequest(text: text)
+        case .purify:
+            purifierRequest = SelectionRequest(text: text)
+        case .webSearch:
+            searchWeb(text)
         }
-        .buttonStyle(.plain)
-    }
-
-    private var selectionDivider: some View {
-        Rectangle()
-            .fill(model.theme.textColor.opacity(0.08))
-            .frame(width: 1, height: 32)
     }
 
     private func searchWeb(_ text: String) {
@@ -791,6 +761,8 @@ struct NovelReaderView: View {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
                 guard !editingZones else { return }
+                // 正在拉伸手柄扩选时，横向拖动属于选区操作，不能触发翻页。
+                guard selectedText == nil else { return }
 
                 // 边缘退出优先于翻页：从最左侧往右，整页跟着走。
                 if canEdgeExit, isEdgeExit || startsAtLeftEdge(value) {
@@ -824,6 +796,11 @@ struct NovelReaderView: View {
             .onEnded { value in
                 if isEdgeExit {
                     finishEdgeExit(value)
+                    return
+                }
+                // 选区还在时，拖动是在拉选字手柄；任何翻页都应被忽略。
+                guard selectedText == nil else {
+                    snapBack()
                     return
                 }
                 guard !model.isMenuVisible, !editingZones else {

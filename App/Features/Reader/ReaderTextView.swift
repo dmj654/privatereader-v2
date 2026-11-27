@@ -1,11 +1,56 @@
 import SwiftUI
 import UIKit
 
+/// 长按选字后只保留四个动作。菜单由系统以“选中文字上方浮层”的形式弹出，
+/// 不再使用底部自绘工具栏；这里只负责把动作回传给 SwiftUI。
+enum ReaderSelectionAction {
+    case copy
+    case explain
+    case purify
+    case webSearch
+
+    var title: String {
+        switch self {
+        case .copy: return "复制"
+        case .explain: return "解释"
+        case .purify: return "净化"
+        case .webSearch: return "搜索网页"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .copy: return "doc.on.doc"
+        case .explain: return "text.magnifyingglass"
+        case .purify: return "eraser.line.dashed"
+        case .webSearch: return "safari"
+        }
+    }
+}
+
+/// 统一定义四个菜单动作，分页和滚动两个 UITextView 共用，避免两边行为漂移。
+enum ReaderSelectionMenu {
+    static func build(textView: UITextView,
+                      text: String,
+                      handler: @escaping (ReaderSelectionAction, String) -> Void) -> UIMenu {
+        let actions = [ReaderSelectionAction.copy, .explain, .purify, .webSearch]
+        let items = actions.map { action in
+            UIAction(title: action.title,
+                     image: UIImage(systemName: action.symbol)) { _ in
+                // 先清掉系统选区再回传，避免菜单收起后选区手柄还留在正文上。
+                textView.selectedRange = NSRange(location: 0, length: 0)
+                handler(action, text)
+            }
+        }
+        return UIMenu(children: items)
+    }
+}
+
 /// 只读正文渲染。用 UITextView 保证与 CoreText 分页的行宽一致。
 ///
 /// 这里同时承担三件事：
 /// 1. 显示当前页；
-/// 2. 长按选中文字，选中后动作交给 SwiftUI 自绘工具栏；
+/// 2. 长按选中文字，弹出只含四个动作的系统浮层菜单；
 /// 3. 单击九宫格翻页（文字视图自己接点击，不能再盖一层 tapGrid，
 ///    否则长按永远到不了 UITextView）。
 struct ReaderTextView: UIViewRepresentable {
@@ -16,6 +61,7 @@ struct ReaderTextView: UIViewRepresentable {
     var dismissToken: Int = 0
     var onTapAt: ((CGPoint, CGSize) -> Void)?
     var onSelectionChanged: ((String) -> Void)?
+    var onSelectionAction: ((ReaderSelectionAction, String) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -93,15 +139,18 @@ struct ReaderTextView: UIViewRepresentable {
         func textView(_ textView: UITextView,
                       editMenuForTextIn range: NSRange,
                       suggestedActions: [UIMenuElement]) -> UIMenu? {
-            // 动作菜单由 NovelReaderView 自绘；系统菜单一个都不展示。
-            guard range.length > 0 else { return nil }
-            return UIMenu(children: [])
+            // 用系统浮层菜单，位置在选中文字上方；只放四个动作。
+            guard range.length > 0,
+                  let handler = parent.onSelectionAction else { return nil }
+            let text = (textView.text as NSString).substring(with: range)
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return ReaderSelectionMenu.build(textView: textView, text: text, handler: handler)
         }
     }
 }
 
-/// 系统长按菜单会带“查询 / 翻译 / 分享”等一长串动作，且样式不可控。
-/// 这里关掉原生 action，只保留系统选择手柄，动作交给 SwiftUI 工具栏。
+/// 系统长按菜单会带“查询 / 翻译 / 分享”等一长串动作。
+/// 这里关掉原生动作，只保留系统选择手柄和自定义的四项浮层菜单。
 final class ReaderSelectableTextView: UITextView {
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         false

@@ -26,6 +26,8 @@ struct OnlineComicView: View {
     @State private var showComments = false
     @State private var bookmarked = false
     @State private var toast: String?
+    /// 首次打开在线漫画时的页面入场动画。
+    @State private var entranceVisible = false
     @State private var autoRunning = false
     @State private var autoResetToken = 0
     @State private var autoKickToken = 0
@@ -198,6 +200,16 @@ struct OnlineComicView: View {
             .onChange(of: chapterIndex) { _ in
                 proxy.scrollTo(0, anchor: .top)
             }
+        }
+        .opacity(entranceVisible ? 1 : 0)
+        .scaleEffect(entranceVisible ? 1 : 1.03)
+        .onAppear { revealEntranceIfNeeded() }
+    }
+
+    private func revealEntranceIfNeeded() {
+        guard !entranceVisible else { return }
+        withAnimation(.easeOut(duration: 0.42)) {
+            entranceVisible = true
         }
     }
 
@@ -535,7 +547,8 @@ struct OnlineComicView: View {
     }
 
     private var autoPointsPerSecond: CGFloat {
-        CGFloat(18 + max(1, autoScrollSpeed) * 10)
+        // 与本地条漫同一套更快的速度曲线。
+        CGFloat(32 + max(1, autoScrollSpeed) * 22)
     }
 
     private func handleAutoBottom() {

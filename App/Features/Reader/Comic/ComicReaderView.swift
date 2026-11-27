@@ -38,6 +38,8 @@ struct ComicReaderView: View {
     @State private var bookmarked = false
     @State private var showCatalog = false
     @State private var toast: String?
+    /// 首次进入时页面淡入并轻微回正，和翻页器的打开动作保持一致。
+    @State private var entranceVisible = false
 
     @AppStorage("comic.fit") private var fitRaw = ComicFit.height.rawValue
     @AppStorage("comic.background") private var backgroundRaw = "canvas"
@@ -66,23 +68,30 @@ struct ComicReaderView: View {
 
                 if pages.isEmpty {
                     ProgressView().tint(Palette.accent)
-                } else if mode == .page {
-                    // 图片层要铺到状态栏和底部安全区里，否则第一张图上方会留一条
-                    // 与图片无关的底色，看起来像"顶部留白"。
-                    pageContent(size: proxy.size)
-                        .ignoresSafeArea()
                 } else {
-                    StripReader(book: book,
-                                store: store,
-                                pages: pages,
-                                background: background,
-                                autoRunning: autoRunning,
-                                pointsPerSecond: stripPointsPerSecond,
-                                resetToken: stripResetToken,
-                                kickToken: stripKickToken,
-                                onReachBottom: stripReachedBottom,
-                                onTap: togglePanel)
-                        .ignoresSafeArea()
+                    Group {
+                        if mode == .page {
+                            // 图片层要铺到状态栏和底部安全区里，否则第一张图上方会留一条
+                            // 与图片无关的底色，看起来像"顶部留白"。
+                            pageContent(size: proxy.size)
+                                .ignoresSafeArea()
+                        } else {
+                            StripReader(book: book,
+                                        store: store,
+                                        pages: pages,
+                                        background: background,
+                                        autoRunning: autoRunning,
+                                        pointsPerSecond: stripPointsPerSecond,
+                                        resetToken: stripResetToken,
+                                        kickToken: stripKickToken,
+                                        onReachBottom: stripReachedBottom,
+                                        onTap: togglePanel)
+                                .ignoresSafeArea()
+                        }
+                    }
+                    .opacity(entranceVisible ? 1 : 0)
+                    .scaleEffect(entranceVisible ? 1 : 1.03)
+                    .onAppear { revealEntranceIfNeeded() }
                 }
 
                 if showPanel {
@@ -311,7 +320,16 @@ struct ComicReaderView: View {
     }
 
     private var stripPointsPerSecond: CGFloat {
-        CGFloat(18 + max(1, autoScrollSpeed) * 10)
+        // 漫画的滚动速度整体上调：原档位 3 约 48pt/s，这里约 98pt/s，
+        // 仍保留 1…8 档用于用户微调。
+        CGFloat(32 + max(1, autoScrollSpeed) * 22)
+    }
+
+    private func revealEntranceIfNeeded() {
+        guard !entranceVisible else { return }
+        withAnimation(.easeOut(duration: 0.42)) {
+            entranceVisible = true
+        }
     }
 
     private func stripReachedBottom() {
