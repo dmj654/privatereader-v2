@@ -14,6 +14,8 @@ struct DetailView: View {
     @State private var groups: [BookGroup] = []
     @State private var chapterTitles: [String] = []
     @State private var chaptersLoading = false
+    @State private var chapterQuery = ""
+    @State private var chaptersDescending = false
     @State private var pendingChapter: Int?
     @State private var groupID: String?
 
@@ -205,11 +207,33 @@ struct DetailView: View {
         .padding(.bottom, Spacing.l)
     }
 
+    private var localCatalogRows: [LocalCatalogRow] {
+        let query = chapterQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rows = chapterTitles.enumerated().compactMap { index, title -> LocalCatalogRow? in
+            guard query.isEmpty || title.localizedCaseInsensitiveContains(query) else { return nil }
+            return LocalCatalogRow(index: index, title: title)
+        }
+        return chaptersDescending ? Array(rows.reversed()) : rows
+    }
+
     private var chapters: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("目录").font(Typo.headline).foregroundStyle(Palette.ink)
                 Spacer()
+                if !chapterTitles.isEmpty {
+                    Button {
+                        chaptersDescending.toggle()
+                    } label: {
+                        Label(chaptersDescending ? "倒序" : "正序",
+                              systemImage: chaptersDescending
+                                ? "arrow.up.to.line"
+                                : "arrow.down.to.line")
+                            .font(.system(size: 11.5, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Palette.accent)
+                }
                 Text("共 \(book.chapterCount) 章").font(Typo.micro).foregroundStyle(Palette.ink3)
             }
             .padding(.horizontal, Spacing.xl)
@@ -221,6 +245,35 @@ struct DetailView: View {
                     .foregroundStyle(Palette.ink3)
                     .padding(.horizontal, Spacing.xl)
                     .padding(.bottom, 10)
+            } else if !chapterTitles.isEmpty {
+                HStack(spacing: 7) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Palette.ink3)
+                    TextField("搜索章节", text: $chapterQuery)
+                        .font(.system(size: 13))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if !chapterQuery.isEmpty {
+                        Button {
+                            chapterQuery = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(Palette.ink3)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 11)
+                .frame(height: 36)
+                .background(Palette.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .padding(.horizontal, Spacing.xl)
+                .padding(.bottom, 10)
+            }
+
+            if book.type == .comic {
+                EmptyView()
             } else if chaptersLoading && chapterTitles.isEmpty {
                 ForEach(0..<3, id: \.self) { _ in
                     SkeletonBox(height: 15)
@@ -234,16 +287,15 @@ struct DetailView: View {
                     .padding(.horizontal, Spacing.xl)
                     .padding(.bottom, 10)
             } else {
-                // 整本列出来，不再只给前 8 章——目录看不全等于没有目录。
                 // LazyVStack 保证几百章也不会一次性建视图。
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(chapterTitles.enumerated()), id: \.offset) { index, title in
+                    ForEach(localCatalogRows) { row in
                         Button {
-                            pendingChapter = index
+                            pendingChapter = row.index
                             showReader = true
                         } label: {
                             HStack(spacing: 10) {
-                                Text(title)
+                                Text(row.title)
                                     .font(.system(size: 14.5))
                                     .foregroundStyle(Palette.ink2)
                                     .lineLimit(2)
@@ -267,6 +319,12 @@ struct DetailView: View {
                 }
             }
         }
+    }
+
+    private struct LocalCatalogRow: Identifiable {
+        let index: Int
+        let title: String
+        var id: Int { index }
     }
 
     /// 详情页也要显示真实章节名，不能只写"第 N 章"。

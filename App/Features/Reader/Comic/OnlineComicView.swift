@@ -187,7 +187,12 @@ struct OnlineComicView: View {
             .simultaneousGesture(
                 TapGesture().onEnded {
                     withAnimation(.easeInOut(duration: 0.16)) { showBars.toggle() }
-                    if autoRunning { autoKickToken += 1 }
+                    if autoRunning {
+                        autoKickToken += 1
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            if autoRunning { autoKickToken += 1 }
+                        }
+                    }
                 }
             )
             .onChange(of: chapterIndex) { _ in

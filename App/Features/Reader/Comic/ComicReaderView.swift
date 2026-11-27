@@ -219,6 +219,11 @@ struct ComicReaderView: View {
         if autoRunning {
             stripKickToken += 1
             if mode == .page { restartAuto() }
+            // 菜单的显示/隐藏动画结束后，底层 UIScrollView 可能才真正换掉；
+            // 再踢一次，确保新的滚动视图也能接上 CADisplayLink。
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                if autoRunning { stripKickToken += 1 }
+            }
         }
     }
 
