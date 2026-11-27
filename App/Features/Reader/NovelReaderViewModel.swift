@@ -561,7 +561,13 @@ final class NovelReaderViewModel: ObservableObject {
     /// 不截断就会从上一页念起（听感错位），跳到下一句又会漏掉眼前这半句。
     func prepareSpeech(startAtCurrentPage: Bool = true) -> String? {
         guard let attributed = chapterAttributed(), attributed.length > 0 else { return nil }
-        let key = CacheKey(chapter: chapterIndex, style: style, theme: theme.rawValue)
+        let key = CacheKey(
+            chapter: chapterIndex,
+            style: style,
+            theme: theme.rawValue,
+            purifyEnabled: purifier.isEnabled,
+            purifyRules: purifier.rules.joined(separator: "|")
+        )
 
         if speechSentenceKey != key || speechSentences.isEmpty {
             speechSentences = SentenceSplitter.split(attributed.string)
