@@ -14,7 +14,9 @@ struct ReaderScrollTextView: UIViewRepresentable {
     var resetToken: Int
     var startToken: Int = 0
     var initialProgress: Double = 0
+    var dismissToken: Int = 0
     var onTap: (() -> Void)?
+    var onSelectionChanged: ((String) -> Void)?
     var onExplain: ((String) -> Void)?
     var onPurify: ((String) -> Void)?
     var onProgress: ((Double) -> Void)?
@@ -22,8 +24,8 @@ struct ReaderScrollTextView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
-    func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+    func makeUIView(context: Context) -> ReaderSelectableTextView {
+        let view = ReaderSelectableTextView()
         view.isEditable = false
         view.isSelectable = true
         view.isScrollEnabled = true
@@ -42,11 +44,15 @@ struct ReaderScrollTextView: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ view: UITextView, context: Context) {
+    func updateUIView(_ view: ReaderSelectableTextView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.attach(view)
         view.backgroundColor = background
         view.textContainerInset = textInsets
+        if dismissToken != context.coordinator.lastDismissToken {
+            context.coordinator.lastDismissToken = dismissToken
+            view.selectedRange = NSRange(location: 0, length: 0)
+        }
 
         if view.attributedText != attributedText {
             let offset = view.contentOffset
@@ -72,13 +78,14 @@ struct ReaderScrollTextView: UIViewRepresentable {
         }
     }
 
-    static func dismantleUIView(_ uiView: UITextView, coordinator: Coordinator) {
+    static func dismantleUIView(_ uiView: ReaderSelectableTextView, coordinator: Coordinator) {
         coordinator.stop()
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: ReaderScrollTextView
         fileprivate var lastResetToken: Int
+        var lastDismissToken = 0
         private var link: CADisplayLink?
         private var autoRunning = false
         private var pointsPerSecond: CGFloat = 0
@@ -95,6 +102,7 @@ struct ReaderScrollTextView: UIViewRepresentable {
         init(_ parent: ReaderScrollTextView) {
             self.parent = parent
             self.lastResetToken = parent.resetToken
+            self.lastDismissToken = parent.dismissToken
         }
 
         func apply(resetToken: Int,
@@ -201,16 +209,22 @@ struct ReaderScrollTextView: UIViewRepresentable {
                 suppressNextTap = false
                 return
             }
-            guard view.selectedRange.length == 0 else { return }
+            guard view.selectedRange.length == 0 else {
+                view.selectedRange = NSRange(location: 0, length: 0)
+                parent.onSelectionChanged?("")
+                suppressNextTap = true
+                return
+            }
             parent.onTap?()
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
-            if textView.selectedRange.length > 0 {
-                hadSelection = true
-            } else if hadSelection {
-                hadSelection = false
-                suppressNextTap = true
+            let range = textView.selectedRange
+            if range.length > 0 {
+                let text = (textView.text as NSString).substring(with: range)
+                parent.onSelectionChanged?(text)
+            } else {
+                parent.onSelectionChanged?("")
             }
         }
 
@@ -234,29 +248,7 @@ struct ReaderScrollTextView: UIViewRepresentable {
                       editMenuForTextIn range: NSRange,
                       suggestedActions: [UIMenuElement]) -> UIMenu? {
             guard range.length > 0 else { return nil }
-            let text = (textView.text as NSString).substring(with: range)
-            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-
-            let filtered = suggestedActions.filter { action in
-                let title = action.title
-                return title != "拷贝" && title != "Copy" && title != "复制"
-            }
-            let copy = UIAction(title: "复制", image: UIImage(systemName: "doc.on.doc")) { _ in
-                UIPasteboard.general.string = text
-            }
-            var extras: [UIMenuElement] = []
-            if let onExplain = parent.onExplain {
-                extras.append(UIAction(title: "解释", image: UIImage(systemName: "text.magnifyingglass")) { _ in
-                    onExplain(text)
-                })
-            }
-            if let onPurify = parent.onPurify {
-                extras.append(UIAction(title: "新建净化规则",
-                                       image: UIImage(systemName: "eraser.line.dashed")) { _ in
-                    onPurify(text)
-                })
-            }
-            return UIMenu(children: [copy] + filtered + extras)
+            return UIMenu(children: [])
         }
     }
 }

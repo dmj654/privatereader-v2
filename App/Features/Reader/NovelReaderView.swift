@@ -22,6 +22,7 @@ private enum ReaderSheet: Identifiable {
     case voice
     case sourceSwitch
     case cache
+    case purifierManager
 
     var id: String {
         switch self {
@@ -30,6 +31,7 @@ private enum ReaderSheet: Identifiable {
         case .voice: return "voice"
         case .sourceSwitch: return "sourceSwitch"
         case .cache: return "cache"
+        case .purifierManager: return "purifierManager"
         }
     }
 }
@@ -85,7 +87,9 @@ struct NovelReaderView: View {
     /// 自动滚动时的卷内进度；关掉自动阅读后用它回到对应的翻页位置。
     @State private var scrollProgress: Double = 0
 
-    /// 长按选字后的两个入口。
+    /// 长按选字后的四个入口。
+    @State private var selectedText: String?
+    @State private var dismissSelectionToken = 0
     @State private var explainRequest: SelectionRequest?
     @State private var purifierRequest: SelectionRequest?
     @StateObject private var purifierStore = PurifierRuleStore.shared
@@ -192,6 +196,14 @@ struct NovelReaderView: View {
             // 退出时整页（包括菜单）一起走，才有"被推回去"的实感
             .offset(x: exitOffset)
             .statusBarHidden(model.isMenuVisible == false && !editingZones)
+            .overlay(alignment: .bottom) {
+                if let selectedText, !selectedText.isEmpty {
+                    selectionActionBar(text: selectedText)
+                        .padding(.horizontal, 22)
+                        .padding(.bottom, 26)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .overlay(alignment: .topLeading) {
                 // 加载失败时菜单不可达，必须留一个明确的返回入口，
                 // 否则用户会卡在"这一章没打开"上，怎么划都出不去。
@@ -315,6 +327,22 @@ struct NovelReaderView: View {
                     chapterCount: model.chapters.count
                 )
                 .presentationDetents([.height(360), .medium])
+                .presentationDragIndicator(.visible)
+
+            case .purifierManager:
+                PurifierManagerSheet(
+                    bookID: model.book.id,
+                    bookTitle: model.book.title,
+                    isEnabled: model.isPurifierEnabled,
+                    onToggle: { enabled in
+                        UserDefaults.standard.set(enabled, forKey: purifyKey(for: model.book))
+                        model.setPurifierEnabled(enabled)
+                    },
+                    onChanged: {
+                        configurePurifier(for: model.book)
+                    }
+                )
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
 
             case .settings(let focus):
@@ -473,6 +501,7 @@ struct NovelReaderView: View {
                     background: UIColor(model.theme.background),
                     textInsets: .zero,
                     isInteractive: interactive,
+                    dismissToken: dismissSelectionToken,
                     onTapAt: { point, _ in
                         performTap(
                             at: CGPoint(x: point.x + model.style.marginHorizontal,
@@ -480,12 +509,7 @@ struct NovelReaderView: View {
                             size: content.size
                         )
                     },
-                    onExplain: { text in
-                        explainRequest = SelectionRequest(text: text)
-                    },
-                    onPurify: { text in
-                        purifierRequest = SelectionRequest(text: text)
-                    }
+                    onSelectionChanged: selectionChanged
                 )
                 .padding(.horizontal, model.style.marginHorizontal)
                 .padding(.top, model.style.marginTop)
@@ -540,17 +564,17 @@ struct NovelReaderView: View {
                 resetToken: scrollResetToken,
                 startToken: scrollStartToken,
                 initialProgress: scrollProgress,
+                dismissToken: dismissSelectionToken,
                 onTap: {
+                    if selectedText != nil {
+                        clearSelection()
+                        return
+                    }
                     withAnimation(.easeInOut(duration: 0.18)) {
                         model.isMenuVisible.toggle()
                     }
                 },
-                onExplain: { text in
-                    explainRequest = SelectionRequest(text: text)
-                },
-                onPurify: { text in
-                    purifierRequest = SelectionRequest(text: text)
-                },
+                onSelectionChanged: selectionChanged,
                 onProgress: { fraction in
                     scrollProgress = fraction
                 },
@@ -579,9 +603,95 @@ struct NovelReaderView: View {
 
     private func performTap(at point: CGPoint, size: CGSize) {
         guard size.width > 0, size.height > 0 else { return }
+        if selectedText != nil {
+            clearSelection()
+            return
+        }
         let column = min(max(Int(point.x / (size.width / 3)), 0), 2)
         let row = min(max(Int(point.y / (size.height / 3)), 0), 2)
         perform(activeZones[TapZone.grid[row][column]])
+    }
+
+    private func selectionChanged(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            selectedText = nil
+            return
+        }
+        selectedText = text
+        if model.isMenuVisible {
+            withAnimation(.easeInOut(duration: 0.16)) { model.isMenuVisible = false }
+        }
+    }
+
+    private func clearSelection() {
+        selectedText = nil
+        dismissSelectionToken += 1
+    }
+
+    private func selectionActionBar(text: String) -> some View {
+        HStack(spacing: 0) {
+            selectionAction("复制", symbol: "doc.on.doc") {
+                UIPasteboard.general.string = text
+                clearSelection()
+            }
+            selectionDivider
+            selectionAction("解释", symbol: "text.magnifyingglass") {
+                clearSelection()
+                explainRequest = SelectionRequest(text: text)
+            }
+            selectionDivider
+            selectionAction("净化", symbol: "eraser.line.dashed") {
+                clearSelection()
+                purifierRequest = SelectionRequest(text: text)
+            }
+            selectionDivider
+            selectionAction("搜索网页", symbol: "safari") {
+                clearSelection()
+                searchWeb(text)
+            }
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .fill(model.theme.chromeSurface.opacity(0.98))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .strokeBorder(model.theme.textColor.opacity(0.10), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.16), radius: 18, y: 8)
+    }
+
+    private func selectionAction(_ title: String,
+                                  symbol: String,
+                                  action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .medium))
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(model.theme.textColor)
+            .frame(minWidth: 62, minHeight: 48)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var selectionDivider: some View {
+        Rectangle()
+            .fill(model.theme.textColor.opacity(0.08))
+            .frame(width: 1, height: 32)
+    }
+
+    private func searchWeb(_ text: String) {
+        guard let escaped = text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://www.bing.com/search?q=\(escaped)") else { return }
+        UIApplication.shared.open(url)
     }
 
     /// 听书用自己的九宫格：同样是九个格子，但动作是"上一句 / 下一句 / 暂停"这一套。
@@ -1400,7 +1510,7 @@ struct NovelReaderView: View {
             Spacer()
 
             Button {
-                togglePurifier()
+                sheet = .purifierManager
             } label: {
                 Text("净化")
                     .font(.system(size: 11.5, weight: .semibold))
@@ -1413,7 +1523,7 @@ struct NovelReaderView: View {
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(model.isPurifierEnabled ? "关闭正文净化" : "开启正文净化")
+            .accessibilityLabel("打开净化管理")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)

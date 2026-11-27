@@ -5,7 +5,7 @@ import UIKit
 ///
 /// 这里同时承担三件事：
 /// 1. 显示当前页；
-/// 2. 长按选中文字，给出复制 / 解释 / 新建净化规则；
+/// 2. 长按选中文字，选中后动作交给 SwiftUI 自绘工具栏；
 /// 3. 单击九宫格翻页（文字视图自己接点击，不能再盖一层 tapGrid，
 ///    否则长按永远到不了 UITextView）。
 struct ReaderTextView: UIViewRepresentable {
@@ -13,14 +13,14 @@ struct ReaderTextView: UIViewRepresentable {
     let background: UIColor
     let textInsets: UIEdgeInsets
     var isInteractive: Bool = false
+    var dismissToken: Int = 0
     var onTapAt: ((CGPoint, CGSize) -> Void)?
-    var onExplain: ((String) -> Void)?
-    var onPurify: ((String) -> Void)?
+    var onSelectionChanged: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
-    func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+    func makeUIView(context: Context) -> ReaderSelectableTextView {
+        let view = ReaderSelectableTextView()
         view.isEditable = false
         view.isSelectable = isInteractive
         view.isScrollEnabled = false
@@ -41,22 +41,27 @@ struct ReaderTextView: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ view: UITextView, context: Context) {
+    func updateUIView(_ view: ReaderSelectableTextView, context: Context) {
         context.coordinator.parent = self
         view.attributedText = attributedText
         view.backgroundColor = background
         view.textContainerInset = textInsets
         view.isSelectable = isInteractive
         view.isUserInteractionEnabled = isInteractive
+        if dismissToken != context.coordinator.lastDismissToken {
+            context.coordinator.lastDismissToken = dismissToken
+            view.selectedRange = NSRange(location: 0, length: 0)
+        }
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: ReaderTextView
-        private var hadSelection = false
+        var lastDismissToken = 0
         private var suppressNextTap = false
 
         init(_ parent: ReaderTextView) {
             self.parent = parent
+            self.lastDismissToken = parent.dismissToken
         }
 
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
@@ -65,50 +70,44 @@ struct ReaderTextView: UIViewRepresentable {
                 suppressNextTap = false
                 return
             }
-            // 用户正在选字时，第一下点击只用来收起选择菜单，不翻页。
-            guard view.selectedRange.length == 0 else { return }
+            // 正在选字时，点一下正文只收起选择，不翻页。
+            guard view.selectedRange.length == 0 else {
+                view.selectedRange = NSRange(location: 0, length: 0)
+                parent.onSelectionChanged?("")
+                suppressNextTap = true
+                return
+            }
             parent.onTapAt?(gesture.location(in: view), view.bounds.size)
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
-            if textView.selectedRange.length > 0 {
-                hadSelection = true
-            } else if hadSelection {
-                hadSelection = false
-                suppressNextTap = true
+            let range = textView.selectedRange
+            if range.length > 0 {
+                let text = (textView.text as NSString).substring(with: range)
+                parent.onSelectionChanged?(text)
+            } else {
+                parent.onSelectionChanged?("")
             }
         }
 
         func textView(_ textView: UITextView,
                       editMenuForTextIn range: NSRange,
                       suggestedActions: [UIMenuElement]) -> UIMenu? {
+            // 动作菜单由 NovelReaderView 自绘；系统菜单一个都不展示。
             guard range.length > 0 else { return nil }
-            let text = (textView.text as NSString).substring(with: range)
-            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-
-            // 系统菜单自带“拷贝”；加一条中文“复制”会在不同系统语言下重复。
-            // 只保留除系统拷贝外真正有价值的动作，再追加解释/净化。
-            let filtered = suggestedActions.filter { action in
-                let title = action.title
-                return title != "拷贝" && title != "Copy" && title != "复制"
-            }
-
-            let copy = UIAction(title: "复制", image: UIImage(systemName: "doc.on.doc")) { _ in
-                UIPasteboard.general.string = text
-            }
-            var extras: [UIMenuElement] = []
-            if let onExplain = parent.onExplain {
-                extras.append(UIAction(title: "解释", image: UIImage(systemName: "text.magnifyingglass")) { _ in
-                    onExplain(text)
-                })
-            }
-            if let onPurify = parent.onPurify {
-                extras.append(UIAction(title: "新建净化规则",
-                                       image: UIImage(systemName: "eraser.line.dashed")) { _ in
-                    onPurify(text)
-                })
-            }
-            return UIMenu(children: [copy] + filtered + extras)
+            return UIMenu(children: [])
         }
+    }
+}
+
+/// 系统长按菜单会带“查询 / 翻译 / 分享”等一长串动作，且样式不可控。
+/// 这里关掉原生 action，只保留系统选择手柄，动作交给 SwiftUI 工具栏。
+final class ReaderSelectableTextView: UITextView {
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        false
+    }
+
+    override func buildMenu(with builder: UIMenuBuilder) {
+        // 不注册任何原生编辑菜单。
     }
 }

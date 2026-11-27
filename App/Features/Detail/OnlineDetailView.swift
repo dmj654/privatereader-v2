@@ -17,6 +17,9 @@ struct OnlineDetailView: View {
     @State private var showCatalog = false
     @State private var pendingChapter: Int?
     @State private var pendingCatalogChapter: Int?
+    @State private var catalogQuery = ""
+    @State private var catalogDescending = false
+    @State private var veneraDetail: VeneraDetail?
     @State private var isOpening = false
     @State private var isAdding = false
     @State private var isCaching = false
@@ -318,16 +321,29 @@ struct OnlineDetailView: View {
         }
     }
 
+    private var catalogRows: [CatalogRow] {
+        let query = catalogQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rows = chapters.enumerated().compactMap { index, chapter -> CatalogRow? in
+            guard query.isEmpty || chapter.name.localizedCaseInsensitiveContains(query) else { return nil }
+            return CatalogRow(index: index, chapter: chapter)
+        }
+        return catalogDescending ? Array(rows.reversed()) : rows
+    }
+
     private var catalogSheet: some View {
         NavigationStack {
             List {
-                ForEach(Array(chapters.enumerated()), id: \.offset) { index, chapter in
+                ForEach(catalogRows) { row in
                     Button {
-                        pendingCatalogChapter = index
+                        pendingCatalogChapter = row.index
                         showCatalog = false
                     } label: {
-                        HStack {
-                            Text(chapter.name)
+                        HStack(spacing: 10) {
+                            Text("\(row.index + 1)")
+                                .font(.system(size: 11.5).monospacedDigit())
+                                .foregroundStyle(Palette.ink3)
+                                .frame(width: 32, alignment: .trailing)
+                            Text(row.chapter.name)
                                 .font(.system(size: 14.5))
                                 .foregroundStyle(Palette.ink)
                                 .lineLimit(2)
@@ -345,12 +361,36 @@ struct OnlineDetailView: View {
             .listStyle(.plain)
             .navigationTitle("目录 · \(chapters.count) \(isComic ? "话" : "章")")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(
+                text: $catalogQuery,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "搜索章节"
+            )
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        catalogDescending.toggle()
+                    } label: {
+                        Label(catalogDescending ? "倒序" : "正序",
+                              systemImage: catalogDescending
+                                ? "arrow.up.to.line"
+                                : "arrow.down.to.line")
+                            .labelStyle(.titleAndIcon)
+                            .font(.system(size: 12.5, weight: .medium))
+                    }
+                    .accessibilityLabel(catalogDescending ? "切换为从第一章开始" : "切换为从最后一章开始")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("关闭") { showCatalog = false }
                 }
             }
         }
+    }
+
+    private struct CatalogRow: Identifiable {
+        let index: Int
+        let chapter: OnlineChapter
+        var id: Int { index }
     }
 
     // MARK: 数据
@@ -392,6 +432,7 @@ struct OnlineDetailView: View {
                     source: script,
                     comicId: online.bookUrl
                 )
+                veneraDetail = info
                 detail = OnlineBook(
                     sourceId: script.id,
                     name: info.title,
@@ -477,10 +518,11 @@ struct OnlineDetailView: View {
             )
         case .venera(let script):
             bundle = try await service.prepareVenera(
-                target, source: script, runtime: env.veneraRuntime
+                target, source: script, runtime: env.veneraRuntime,
+                knownDetail: veneraDetail
             )
         }
-        return env.fallbackCoverIfNeeded(for: bundle.book)
+        return bundle.book
     }
 
     private func addToShelf() {

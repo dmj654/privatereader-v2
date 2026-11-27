@@ -14,6 +14,7 @@ struct StripReader: View {
     var autoRunning: Bool = false
     var pointsPerSecond: CGFloat = 0
     var resetToken: Int = 0
+    var kickToken: Int = 0
     var onReachBottom: (() -> Void)?
     let onTap: () -> Void
 
@@ -25,6 +26,7 @@ struct StripReader: View {
                         isRunning: autoRunning,
                         pointsPerSecond: pointsPerSecond,
                         resetToken: resetToken,
+                        kickToken: kickToken,
                         onReachBottom: onReachBottom
                     )
                     .frame(width: 1, height: 1)

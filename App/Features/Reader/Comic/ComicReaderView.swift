@@ -34,6 +34,7 @@ struct ComicReaderView: View {
     @State private var autoTask: Task<Void, Never>?
     @State private var autoRunning = false
     @State private var stripResetToken = 0
+    @State private var stripKickToken = 0
     @State private var bookmarked = false
     @State private var showCatalog = false
     @State private var toast: String?
@@ -78,6 +79,7 @@ struct ComicReaderView: View {
                                 autoRunning: autoRunning,
                                 pointsPerSecond: stripPointsPerSecond,
                                 resetToken: stripResetToken,
+                                kickToken: stripKickToken,
                                 onReachBottom: stripReachedBottom,
                                 onTap: togglePanel)
                         .ignoresSafeArea()
@@ -211,6 +213,13 @@ struct ComicReaderView: View {
 
     private func togglePanel() {
         withAnimation(.easeInOut(duration: 0.16)) { showPanel.toggle() }
+        // 菜单收起/展开只改变覆盖层，不该改变“自动阅读是否开启”。
+        // 但 SwiftUI 重建时可能换掉底下的滚动视图或取消计时任务，
+        // 所以这里主动踢一下，让当前模式继续跑。
+        if autoRunning {
+            stripKickToken += 1
+            if mode == .page { restartAuto() }
+        }
     }
 
     private func turn(by delta: Int) {

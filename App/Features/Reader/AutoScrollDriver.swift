@@ -13,6 +13,8 @@ struct AutoScrollDriver: UIViewRepresentable {
     var pointsPerSecond: CGFloat
     /// 换章时递增；driver 会回到顶部。
     var resetToken: Int
+    /// 菜单显示/隐藏导致 SwiftUI 重建滚动视图时递增；只重新附着，不改变 offset。
+    var kickToken: Int = 0
     var onReachBottom: (() -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -23,6 +25,7 @@ struct AutoScrollDriver: UIViewRepresentable {
         context.coordinator.update(isRunning: isRunning,
                                    pointsPerSecond: pointsPerSecond,
                                    resetToken: resetToken,
+                                   kickToken: kickToken,
                                    onReachBottom: onReachBottom)
         return view
     }
@@ -33,6 +36,7 @@ struct AutoScrollDriver: UIViewRepresentable {
         context.coordinator.update(isRunning: isRunning,
                                    pointsPerSecond: pointsPerSecond,
                                    resetToken: resetToken,
+                                   kickToken: kickToken,
                                    onReachBottom: onReachBottom)
     }
 
@@ -74,11 +78,15 @@ struct AutoScrollDriver: UIViewRepresentable {
         private var isRunning = false
         private var pointsPerSecond: CGFloat = 0
         private var lastResetToken = 0
+        private var lastKickToken = 0
         private var didReportBottom = false
         private var onReachBottom: (() -> Void)?
 
         func attach(scrollView: UIScrollView?) {
-            guard self.scrollView !== scrollView else { return }
+            guard self.scrollView !== scrollView else {
+                startIfNeeded()
+                return
+            }
             self.scrollView = scrollView
             // SwiftUI 在切换菜单时可能换掉底层 UIScrollView；不能继续拿旧
             // 的弱引用装作在滚，否则点中间收起菜单就会看起来“自动停了”。
@@ -93,6 +101,7 @@ struct AutoScrollDriver: UIViewRepresentable {
         func update(isRunning: Bool,
                     pointsPerSecond: CGFloat,
                     resetToken: Int,
+                    kickToken: Int,
                     onReachBottom: (() -> Void)?) {
             let started = isRunning && !self.isRunning
             self.isRunning = isRunning
@@ -106,6 +115,12 @@ struct AutoScrollDriver: UIViewRepresentable {
                 lastResetToken = resetToken
                 didReportBottom = false
                 scrollView?.setContentOffset(.zero, animated: false)
+            }
+            if kickToken != lastKickToken {
+                lastKickToken = kickToken
+                // 菜单收起/展开可能重建底下的 UIScrollView：重新找一遍，
+                // 只把触底标记复位，不碰当前阅读位置。
+                didReportBottom = false
             }
             startIfNeeded()
         }

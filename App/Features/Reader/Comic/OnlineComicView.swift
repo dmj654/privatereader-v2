@@ -28,6 +28,7 @@ struct OnlineComicView: View {
     @State private var toast: String?
     @State private var autoRunning = false
     @State private var autoResetToken = 0
+    @State private var autoKickToken = 0
     @State private var showCache = false
     @State private var cacheCount = 5
     @State private var cacheDone = 0
@@ -160,6 +161,7 @@ struct OnlineComicView: View {
                         isRunning: autoRunning,
                         pointsPerSecond: autoPointsPerSecond,
                         resetToken: autoResetToken,
+                        kickToken: autoKickToken,
                         onReachBottom: handleAutoBottom
                     )
                     .frame(width: 1, height: 1)
@@ -185,6 +187,7 @@ struct OnlineComicView: View {
             .simultaneousGesture(
                 TapGesture().onEnded {
                     withAnimation(.easeInOut(duration: 0.16)) { showBars.toggle() }
+                    if autoRunning { autoKickToken += 1 }
                 }
             )
             .onChange(of: chapterIndex) { _ in

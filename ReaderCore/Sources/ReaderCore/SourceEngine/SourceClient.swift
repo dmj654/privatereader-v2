@@ -44,21 +44,70 @@ public actor SourceClient {
         items.compactMap { item in
             let name = RuleRunner.string(rule.name, html: item, baseUrl: source.url)
             guard !name.isEmpty else { return nil }
+            let bookURL = RuleRunner.resolveURL(
+                RuleRunner.string(rule.bookUrl, html: item, baseUrl: source.url),
+                baseUrl: source.url
+            )
+            var cover = RuleRunner.string(rule.coverUrl, html: item, baseUrl: source.url)
+            if cover.isEmpty { cover = Self.derivedBiqugeCoverURL(from: bookURL) }
             return OnlineBook(
                 sourceId: source.id,
                 name: name,
                 author: RuleRunner.string(rule.author, html: item, baseUrl: source.url),
-                coverUrl: RuleRunner.string(rule.coverUrl, html: item, baseUrl: source.url),
+                coverUrl: cover,
                 intro: RuleRunner.string(rule.intro, html: item, baseUrl: source.url),
                 kind: RuleRunner.string(rule.kind, html: item, baseUrl: source.url),
                 wordCount: RuleRunner.string(rule.wordCount, html: item, baseUrl: source.url),
                 lastChapter: RuleRunner.string(rule.lastChapter, html: item, baseUrl: source.url),
-                bookUrl: RuleRunner.resolveURL(
-                    RuleRunner.string(rule.bookUrl, html: item, baseUrl: source.url),
-                    baseUrl: source.url
-                )
+                bookUrl: bookURL
             )
         }
+    }
+
+    /// 很多 biquge 系小说源在搜索/分类页不返回封面，但详情页固定使用
+    /// `files/article/image/<分类>/<书号>/<书号>s.jpg`。只对能明确识别出
+    /// 这种书号的 URL 推导，推不出来就保持空，不用生成图冒充源站封面。
+    private static func derivedBiqugeCoverURL(from bookURL: String) -> String {
+        guard let url = URL(string: bookURL),
+              let scheme = url.scheme,
+              let host = url.host else { return "" }
+        let parts = url.path.split(separator: "/").map(String.init)
+        guard !parts.isEmpty else { return "" }
+
+        var category = ""
+        var bookID = ""
+        if parts.count >= 2, parts[0].allSatisfy({ $0.isNumber }),
+           parts[1].allSatisfy({ $0.isNumber }) {
+            category = parts[0]
+            bookID = parts[1]
+        } else if parts.count == 1 {
+            let pair = parts[0].split(separator: "_").map(String.init)
+            if pair.count == 2, pair.allSatisfy({ $0.allSatisfy(\.isNumber) }) {
+                category = pair[0]
+                bookID = pair[1]
+            }
+        }
+        guard !category.isEmpty, !bookID.isEmpty else { return "" }
+        return "\(scheme)://\(host)/files/article/image/\(category)/\(bookID)/\(bookID)s.jpg"
+    }
+
+    /// 小说详情页通常有 og:image 或侧边栏封面，而很多源的 coverUrl 规则是空的。
+    /// 规则取不到时按通用位置兜底；这不是生成封面，只是从源站 HTML 里读真实图片。
+    private func fallbackCoverURL(html: String, baseUrl: String) -> String {
+        let selectors = [
+            "meta[property=og:image]@content",
+            "meta[name=og:image]@content",
+            "meta[name=twitter:image]@content",
+            "id.fmimg@tag.img@src",
+            "id.cover@tag.img@src",
+            "class.cover@tag.img@src",
+            "class.book-cover@tag.img@src"
+        ]
+        for selector in selectors {
+            let value = RuleRunner.string(selector, html: html, baseUrl: baseUrl, purify: false)
+            if !value.isEmpty { return RuleRunner.resolveURL(value, baseUrl: baseUrl) }
+        }
+        return ""
     }
 
     // MARK: 发现
@@ -104,7 +153,15 @@ public actor SourceClient {
         let author = RuleRunner.string(rule.author, html: html, baseUrl: source.url)
         if !author.isEmpty { result.author = author }
         let cover = RuleRunner.string(rule.coverUrl, html: html, baseUrl: source.url)
-        if !cover.isEmpty { result.coverUrl = cover }
+        if !cover.isEmpty {
+            result.coverUrl = cover
+        } else {
+            let fallback = fallbackCoverURL(html: html, baseUrl: source.url)
+            if !fallback.isEmpty { result.coverUrl = fallback }
+        }
+        if result.coverUrl.isEmpty {
+            result.coverUrl = Self.derivedBiqugeCoverURL(from: result.bookUrl)
+        }
         let intro = RuleRunner.string(rule.intro, html: html, baseUrl: source.url)
         if !intro.isEmpty { result.intro = intro }
         let kind = RuleRunner.string(rule.kind, html: html, baseUrl: source.url)

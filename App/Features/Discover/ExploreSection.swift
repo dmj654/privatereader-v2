@@ -271,6 +271,7 @@ struct ExploreSection: View {
     }
 
     private func loadSources() {
+        ExploreCache.shared.configure(directory: env.paths.cache)
         guard targets.isEmpty || targetsKind != kind else { return }
         let all = (try? SourceImportService(repo: env.sources).enabledTargets()) ?? []
         targets = ExploreTargetFilter.filter(all, comic: kind == .comic)
@@ -465,32 +466,82 @@ private final class ExploreCache {
         let pages: [VeneraExplorePage]
         let sections: [VeneraExploreSection]
         let firstPageTitle: String
+        let savedAt: Date
     }
 
     private let homeBoxes = NSCache<NSString, HomeBox>()
     private let sectionBoxes = NSCache<NSString, SectionBox>()
+    private var directory: URL?
+    private let cacheSeconds: TimeInterval = 1800
+
+    func configure(directory: URL) {
+        if self.directory == directory { return }
+        self.directory = directory
+        homeBoxes.removeAllObjects()
+        sectionBoxes.removeAllObjects()
+    }
 
     func home(sourceID: String) -> Home? {
-        homeBoxes.object(forKey: sourceID as NSString)?.home
+        if let memory = homeBoxes.object(forKey: sourceID as NSString)?.home {
+            if Date().timeIntervalSince(memory.savedAt) < cacheSeconds { return memory }
+            homeBoxes.removeObject(forKey: sourceID as NSString)
+        }
+        guard let disk = loadDiskHome(sourceID: sourceID),
+              Date().timeIntervalSince(disk.savedAt) < cacheSeconds else { return nil }
+        let home = Home(pages: disk.pages, sections: disk.sections,
+                        firstPageTitle: disk.firstPageTitle, savedAt: disk.savedAt)
+        let box = HomeBox()
+        box.home = home
+        homeBoxes.setObject(box, forKey: sourceID as NSString)
+        storeSectionMemory(disk.sections, sourceID: sourceID, pageTitle: disk.firstPageTitle)
+        return home
     }
 
     func storeHome(sourceID: String,
                    pages: [VeneraExplorePage],
                    sections: [VeneraExploreSection],
                    firstPageTitle: String) {
+        let home = Home(pages: pages, sections: sections,
+                        firstPageTitle: firstPageTitle, savedAt: Date())
         let box = HomeBox()
-        box.home = Home(pages: pages, sections: sections, firstPageTitle: firstPageTitle)
+        box.home = home
         homeBoxes.setObject(box, forKey: sourceID as NSString)
+        let disk = DiskHome(pages: pages, sections: sections,
+                            firstPageTitle: firstPageTitle, savedAt: Date())
+        if let data = try? JSONEncoder().encode(disk),
+           let file = homeFile(sourceID: sourceID) {
+            try? data.write(to: file, options: .atomic)
+        }
         storeSections(sections, sourceID: sourceID, pageTitle: firstPageTitle)
     }
 
     func sections(sourceID: String, pageTitle: String) -> [VeneraExploreSection]? {
-        sectionBoxes.object(forKey: key(sourceID: sourceID, pageTitle: pageTitle))?.sections
+        let key = key(sourceID: sourceID, pageTitle: pageTitle)
+        if let memory = sectionBoxes.object(forKey: key)?.sections {
+            return memory
+        }
+        guard let file = sectionFile(sourceID: sourceID, pageTitle: pageTitle),
+              let data = try? Data(contentsOf: file),
+              let sections = try? JSONDecoder().decode([VeneraExploreSection].self, from: data)
+        else { return nil }
+        let box = SectionBox()
+        box.sections = sections
+        sectionBoxes.setObject(box, forKey: key)
+        return sections
     }
 
     func storeSections(_ sections: [VeneraExploreSection],
                        sourceID: String,
                        pageTitle: String) {
+        storeSectionMemory(sections, sourceID: sourceID, pageTitle: pageTitle)
+        guard let data = try? JSONEncoder().encode(sections),
+              let file = sectionFile(sourceID: sourceID, pageTitle: pageTitle) else { return }
+        try? data.write(to: file, options: .atomic)
+    }
+
+    private func storeSectionMemory(_ sections: [VeneraExploreSection],
+                                    sourceID: String,
+                                    pageTitle: String) {
         let box = SectionBox()
         box.sections = sections
         sectionBoxes.setObject(box, forKey: key(sourceID: sourceID, pageTitle: pageTitle))
@@ -498,6 +549,40 @@ private final class ExploreCache {
 
     private func key(sourceID: String, pageTitle: String) -> NSString {
         "\(sourceID)|\(pageTitle)" as NSString
+    }
+
+    private struct DiskHome: Codable {
+        let pages: [VeneraExplorePage]
+        let sections: [VeneraExploreSection]
+        let firstPageTitle: String
+        let savedAt: Date
+    }
+
+    private func loadDiskHome(sourceID: String) -> DiskHome? {
+        guard let file = homeFile(sourceID: sourceID),
+              let data = try? Data(contentsOf: file),
+              let home = try? JSONDecoder().decode(DiskHome.self, from: data) else { return nil }
+        return home
+    }
+
+    private func cacheDirectory() -> URL? {
+        guard let directory else { return nil }
+        let dir = directory.appendingPathComponent("Explore", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: dir.path) {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+        return dir
+    }
+
+    private func homeFile(sourceID: String) -> URL? {
+        cacheDirectory()?.appendingPathComponent("\(sourceID)-home.json")
+    }
+
+    private func sectionFile(sourceID: String, pageTitle: String) -> URL? {
+        let safeTitle = pageTitle.addingPercentEncoding(
+            withAllowedCharacters: .alphanumerics
+        ) ?? "page"
+        return cacheDirectory()?.appendingPathComponent("\(sourceID)-\(safeTitle).json")
     }
 }
 

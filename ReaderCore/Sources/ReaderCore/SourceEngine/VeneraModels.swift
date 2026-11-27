@@ -169,7 +169,7 @@ public struct VeneraSource: Equatable, Identifiable, Sendable {
 }
 
 /// Venera 源自己的发现页（不是 legado 的 exploreUrl）。
-public struct VeneraExplorePage: Equatable, Identifiable, Sendable {
+public struct VeneraExplorePage: Codable, Equatable, Identifiable, Sendable {
     public var title: String
     public var type: String
 
@@ -182,7 +182,7 @@ public struct VeneraExplorePage: Equatable, Identifiable, Sendable {
 }
 
 /// 发现页里的一个栏目，例如「推荐」「热门」「本周排行」。
-public struct VeneraExploreSection: Equatable, Identifiable, Sendable {
+public struct VeneraExploreSection: Codable, Equatable, Identifiable, Sendable {
     public var title: String
     public var books: [OnlineBook]
     public var viewMore: String?

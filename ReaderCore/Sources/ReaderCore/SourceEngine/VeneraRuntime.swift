@@ -42,6 +42,19 @@ public final class VeneraRuntime: @unchecked Sendable {
 
     public init() {}
 
+    private final class DetailCacheBox {
+        let detail: VeneraDetail
+        let savedAt: Date
+        init(detail: VeneraDetail) {
+            self.detail = detail
+            self.savedAt = Date()
+        }
+    }
+
+    /// 同一本书刚看过详情，加入书架 / 打开阅读时不要再去源站跑一遍脚本。
+    private let detailCache = NSCache<NSString, DetailCacheBox>()
+    private let detailCacheSeconds: TimeInterval = 600
+
     // MARK: - 对外
 
     public func search(source: VeneraSource,
@@ -210,7 +223,15 @@ public final class VeneraRuntime: @unchecked Sendable {
 
     public func detail(source: VeneraSource,
                        comicId: String,
-                       timeout: TimeInterval = 40) async throws -> VeneraDetail {        let result = try await perform(source: source, timeout: timeout, call: """
+                       timeout: TimeInterval = 40,
+                       forceRefresh: Bool = false) async throws -> VeneraDetail {
+        let cacheKey = "\(source.id)|\(comicId)" as NSString
+        if !forceRefresh,
+           let box = detailCache.object(forKey: cacheKey),
+           Date().timeIntervalSince(box.savedAt) < detailCacheSeconds {
+            return box.detail
+        }
+        let result = try await perform(source: source, timeout: timeout, call: """
         await (async () => {
             const d = await __source.comic.loadInfo(\(jsLiteral(comicId)));
             if (d && d.chapters) {
@@ -286,7 +307,7 @@ public final class VeneraRuntime: @unchecked Sendable {
 
         let subId = string(object["subId"])
         let intro = string(object["description"])
-        return VeneraDetail(
+        let detail = VeneraDetail(
             comicId: comicId,
             title: title,
             author: author,
@@ -297,6 +318,8 @@ public final class VeneraRuntime: @unchecked Sendable {
             subId: subId,
             lastChapter: chapters.last?.name ?? ""
         )
+        detailCache.setObject(DetailCacheBox(detail: detail), forKey: cacheKey)
+        return detail
     }
 
     public func pages(source: VeneraSource,
@@ -407,7 +430,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.8.2';")
+        context.evaluateScript("globalThis.appVersion = '1.9.0';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 

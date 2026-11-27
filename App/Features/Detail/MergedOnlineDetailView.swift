@@ -16,6 +16,8 @@ struct MergedOnlineDetailView: View {
     @State private var showReader = false
     @State private var pendingChapter: Int?
     @State private var isOpening = false
+    @State private var catalogQuery = ""
+    @State private var catalogDescending = false
 
     init(book: SearchViewModel.MergedBook) {
         self.book = book
@@ -317,16 +319,29 @@ struct MergedOnlineDetailView: View {
         }
     }
 
+    private var catalogRows: [MergedCatalogRow] {
+        let query = catalogQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rows = model.chapters.enumerated().compactMap { index, chapter -> MergedCatalogRow? in
+            guard query.isEmpty || chapter.name.localizedCaseInsensitiveContains(query) else { return nil }
+            return MergedCatalogRow(index: index, chapter: chapter)
+        }
+        return catalogDescending ? Array(rows.reversed()) : rows
+    }
+
     private var catalogSheet: some View {
         NavigationStack {
             List {
-                ForEach(Array(model.chapters.enumerated()), id: \.offset) { index, chapter in
+                ForEach(catalogRows) { row in
                     Button {
                         showCatalog = false
-                        startReading(chapter: index)
+                        startReading(chapter: row.index)
                     } label: {
-                        HStack {
-                            Text(chapter.name)
+                        HStack(spacing: 10) {
+                            Text("\(row.index + 1)")
+                                .font(.system(size: 11.5).monospacedDigit())
+                                .foregroundStyle(Palette.ink3)
+                                .frame(width: 32, alignment: .trailing)
+                            Text(row.chapter.name)
                                 .font(.system(size: 14.5))
                                 .foregroundStyle(Palette.ink)
                                 .lineLimit(2)
@@ -338,17 +353,41 @@ struct MergedOnlineDetailView: View {
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .listStyle(.plain)
             .navigationTitle("目录 · \(model.chapters.count)")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(
+                text: $catalogQuery,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: "搜索章节"
+            )
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        catalogDescending.toggle()
+                    } label: {
+                        Label(catalogDescending ? "倒序" : "正序",
+                              systemImage: catalogDescending
+                                ? "arrow.up.to.line"
+                                : "arrow.down.to.line")
+                            .labelStyle(.titleAndIcon)
+                            .font(.system(size: 12.5, weight: .medium))
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("关闭") { showCatalog = false }
                 }
             }
         }
+    }
+
+    private struct MergedCatalogRow: Identifiable {
+        let index: Int
+        let chapter: OnlineChapter
+        var id: Int { index }
     }
 
     // MARK: 换源
@@ -439,6 +478,7 @@ final class MergedDetailModel: ObservableObject {
     /// 只用于阅读、不写入书架的临时 Book；加入书架时会复用同一个 id。
     @Published var readerBook: Book?
     @Published var cachedChapterCount = 0
+    private var veneraDetails: [String: VeneraDetail] = [:]
 
     private var source: SearchTarget?
 
@@ -512,6 +552,7 @@ final class MergedDetailModel: ObservableObject {
                         bookUrl: detail.comicId
                     )
                     candidates.append((enriched, target, detail.chapters))
+                    veneraDetails[script.id] = detail
                 }
             }
         }
@@ -602,10 +643,11 @@ final class MergedDetailModel: ObservableObject {
                 )
             case .venera(let script):
                 bundle = try await service.prepareVenera(
-                    chosen, source: script, runtime: env.veneraRuntime
+                    chosen, source: script, runtime: env.veneraRuntime,
+                    knownDetail: veneraDetails[script.id]
                 )
             }
-            let book = env.fallbackCoverIfNeeded(for: bundle.book)
+            let book = bundle.book
             readerBook = book
             cachedChapterCount = env.onlineReading.cachedChapterCount(for: book)
             return book

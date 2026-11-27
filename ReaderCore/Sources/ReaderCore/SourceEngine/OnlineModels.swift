@@ -1,7 +1,7 @@
 import Foundation
 
 /// 从书源搜到 / 解析出的一本书。还没进书架，只是搜索结果。
-public struct OnlineBook: Equatable, Identifiable, Sendable {
+public struct OnlineBook: Codable, Equatable, Identifiable, Sendable {
     public var sourceId: String
     public var name: String
     public var author: String

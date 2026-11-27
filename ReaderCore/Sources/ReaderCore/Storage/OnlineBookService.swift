@@ -148,8 +148,14 @@ public actor OnlineBookService {
 
     public func prepareVenera(_ online: OnlineBook,
                               source: VeneraSource,
-                              runtime: VeneraRuntime) async throws -> OnlineBookBundle {
-        let detail = try await runtime.detail(source: source, comicId: online.bookUrl)
+                              runtime: VeneraRuntime,
+                              knownDetail: VeneraDetail? = nil) async throws -> OnlineBookBundle {
+        let detail: VeneraDetail
+        if let knownDetail {
+            detail = knownDetail
+        } else {
+            detail = try await runtime.detail(source: source, comicId: online.bookUrl)
+        }
         guard !detail.chapters.isEmpty else { throw SourceError.emptyRule("目录是空的") }
 
         let bookId = UUID().uuidString
@@ -224,7 +230,7 @@ public actor OnlineBookService {
     public func refreshTocVenera(manifest: OnlineManifest,
                                  source: VeneraSource,
                                  runtime: VeneraRuntime) async throws -> (manifest: OnlineManifest, added: Int) {
-        let detail = try await runtime.detail(source: source, comicId: manifest.bookUrl)
+        let detail = try await runtime.detail(source: source, comicId: manifest.bookUrl, forceRefresh: true)
         guard !detail.chapters.isEmpty else { throw SourceError.emptyRule("目录是空的") }
         var updated = manifest
         updated.chapters = detail.chapters
