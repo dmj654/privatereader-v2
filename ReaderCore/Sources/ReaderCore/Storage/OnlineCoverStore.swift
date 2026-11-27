@@ -15,7 +15,9 @@ public enum OnlineCoverStore {
         guard !urlString.isEmpty,
               var url = URL(string: urlString) else { return nil }
         if url.scheme == nil, let baseURL, let base = URL(string: baseURL) {
-            url = URL(string: urlString, relativeTo: base).absoluteURL
+            if let resolved = URL(string: urlString, relativeTo: base) {
+                url = resolved.absoluteURL
+            }
         }
         guard let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https" else { return nil }
