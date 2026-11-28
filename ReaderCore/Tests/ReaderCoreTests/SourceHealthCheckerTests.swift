@@ -98,7 +98,7 @@ final class SourceHealthCheckerTests: XCTestCase {
         ]
         let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
 
-        let status = await checker.check(makeDeepSource(), deep: true, timeout: 2)
+        let status = await checker.check(makeDeepSource(), timeout: 2, deep: true)
 
         guard case .okDeep(let ms, let count, let chapters) = status else {
             return XCTFail("深度检测应当通过搜索、详情、目录，实际 \(status)")
@@ -116,7 +116,7 @@ final class SourceHealthCheckerTests: XCTestCase {
         ]
         let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
 
-        let status = await checker.check(makeDeepSource(), deep: true, timeout: 2)
+        let status = await checker.check(makeDeepSource(), timeout: 2, deep: true)
 
         guard case .partial(let message) = status else {
             return XCTFail("搜索成功但详情失败应当标为部分可用，实际 \(status)")
@@ -133,7 +133,7 @@ final class SourceHealthCheckerTests: XCTestCase {
         ]
         let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
 
-        let status = await checker.check(makeDeepSource(), deep: true, timeout: 2)
+        let status = await checker.check(makeDeepSource(), timeout: 2, deep: true)
 
         guard case .partial(let message) = status else {
             return XCTFail("目录为空应当标为部分可用，实际 \(status)")
