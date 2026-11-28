@@ -80,8 +80,10 @@ public struct SourceHealthSnapshot: Equatable, Sendable {
     }
 
     private static func milliseconds(_ text: String) -> Int? {
-        guard text.hasSuffix("ms") else { return nil }
-        return Int(text.dropLast(2))
+        if text.hasSuffix("ms") {
+            return Int(text.dropLast(2))
+        }
+        return Int(text)
     }
 
     private static func legacyMilliseconds(_ text: String) -> Int? {
