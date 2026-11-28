@@ -165,4 +165,71 @@ final class VeneraRuntimeTests: XCTestCase {
         XCTAssertEqual(item.bookUrl.count, 64)
         XCTAssertTrue(item.bookUrl.allSatisfy { $0.isHexDigit })
     }
+
+    /// 禁漫天堂这类源声明 idMatch 后，纯数字或 jm+数字会直接走详情，
+    /// 不再被普通搜索吞掉；非编号关键词仍然走 search.load。
+    func testSearchByIDUsesSourceIDMatch() async throws {
+        let runtime = VeneraRuntime()
+        let script = """
+        class Probe extends ComicSource {
+            name = "Probe"
+            key = "probe"
+            version = "1.0"
+            idMatch = "^(\\\\d+|jm\\\\d+)$"
+            search = {
+                load: async (keyword, options, page) => ({
+                    comics: [{
+                        id: "normal",
+                        title: keyword,
+                        subTitle: "搜索作者",
+                        cover: "",
+                        description: "",
+                        tags: []
+                    }],
+                    maxPage: 1
+                })
+            }
+            comic = {
+                loadInfo: async (id) => ({
+                    title: "编号作品 " + id,
+                    cover: "https://example.com/cover.jpg",
+                    description: "编号简介",
+                    tags: { "Author": ["作者甲"], "Tag": ["标签乙"] },
+                    chapters: new Map([["e1", "第一话"], ["e2", "第二话"]])
+                }),
+                loadEp: async (comicId, epId) => ({ images: [] })
+            }
+        }
+        """
+        let src = source(script)
+
+        let numeric = try await runtime.search(source: src, keyword: "12345")
+        XCTAssertEqual(numeric.count, 1)
+        XCTAssertEqual(numeric.first?.bookUrl, "12345")
+        XCTAssertEqual(numeric.first?.name, "编号作品 12345")
+        XCTAssertEqual(numeric.first?.author, "作者甲")
+        XCTAssertEqual(numeric.first?.lastChapter, "ID 直达 · 共 2 话")
+
+        // 大写前缀也要能用；JM 的 loadInfo 只认小写 jm。
+        let prefixed = try await runtime.search(source: src, keyword: "JM987")
+        XCTAssertEqual(prefixed.first?.bookUrl, "jm987")
+        XCTAssertEqual(prefixed.first?.name, "编号作品 jm987")
+
+        let normal = try await runtime.search(source: src, keyword: "斗破")
+        XCTAssertEqual(normal.first?.bookUrl, "normal")
+        XCTAssertEqual(normal.first?.name, "斗破")
+    }
+
+    func testVeneraIDMatchExtraction() {
+        let script = """
+        class Probe extends ComicSource {
+            idMatch = "^(\\\\d+|jm\\\\d+)$"
+        }
+        """
+        let src = source(script)
+        XCTAssertEqual(VeneraIDMatch.pattern(from: src), #"^(\d+|jm\d+)$"#)
+        XCTAssertEqual(VeneraIDMatch.id(from: "12345", source: src), "12345")
+        XCTAssertEqual(VeneraIDMatch.id(from: "jm987", source: src), "jm987")
+        XCTAssertNil(VeneraIDMatch.id(from: "斗破", source: src))
+    }
 }
