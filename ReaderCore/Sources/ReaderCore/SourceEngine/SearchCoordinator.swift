@@ -51,7 +51,8 @@ public actor SearchCoordinator {
     ///   两千多个源一次性全发出去，iOS 网络栈会大量返回“似乎已断开互联网”。
     public func search(sources: [SearchTarget],
                        key: String,
-                       maxConcurrent: Int = 6) -> AsyncStream<SourceSearchResult> {
+                       maxConcurrent: Int = 6,
+                       directID: Bool = false) -> AsyncStream<SourceSearchResult> {
         let client = self.client
         let venera = self.venera
         let timeout = perSourceTimeout
@@ -68,7 +69,8 @@ public actor SearchCoordinator {
                         guard let source = iterator.next() else { break }
                         group.addTask {
                             await Self.run(source: source, key: key,
-                                           client: client, venera: venera, timeout: timeout)
+                                           client: client, venera: venera,
+                                           timeout: timeout, directID: directID)
                         }
                     }
 
@@ -77,7 +79,8 @@ public actor SearchCoordinator {
                         if let source = iterator.next() {
                             group.addTask {
                                 await Self.run(source: source, key: key,
-                                               client: client, venera: venera, timeout: timeout)
+                                               client: client, venera: venera,
+                                               timeout: timeout, directID: directID)
                             }
                         }
                     }
@@ -99,13 +102,22 @@ public actor SearchCoordinator {
                             key: String,
                             client: SourceClient,
                             venera: VeneraRuntime,
-                            timeout: TimeInterval) async -> SourceSearchResult {
+                            timeout: TimeInterval,
+                            directID: Bool = false) async -> SourceSearchResult {
         let started = Date()
         guard source.hasSearchEndpoint else {
             return SourceSearchResult(
                 source: source,
                 books: [],
                 errorText: "书源缺少搜索规则：搜索地址或书籍列表为空。请重新导入这个源，或在源管理里删掉后重新添加。",
+                elapsed: 0
+            )
+        }
+        if directID, source.veneraSource == nil {
+            return SourceSearchResult(
+                source: source,
+                books: [],
+                errorText: "这个源不支持编号直达，请重新选择一个漫画源。",
                 elapsed: 0
             )
         }
@@ -119,7 +131,14 @@ public actor SearchCoordinator {
             case .venera(let script):
                 // Venera 源要下载脚本、建 JSContext、跑异步链，15 秒对慢站不够。
                 books = try await withTimeout(seconds: max(timeout, 30)) {
-                    try await venera.search(source: script, keyword: key, timeout: max(timeout, 30))
+                    if directID {
+                        return try await venera.searchByID(source: script,
+                                                           keyword: key,
+                                                           timeout: max(timeout, 30))
+                    }
+                    return try await venera.search(source: script,
+                                                   keyword: key,
+                                                   timeout: max(timeout, 30))
                 }
             }
             return SourceSearchResult(

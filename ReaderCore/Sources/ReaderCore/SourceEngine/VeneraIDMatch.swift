@@ -31,9 +31,14 @@ public enum VeneraIDMatch {
     }
 
     private static func extractPattern(from js: String) -> String? {
-        // 只认行首的 `idMatch: "..."` / `idMatch = '...'` / `idMatch: /.../i`，
-        // 避免把注释里的同名字样当成真实规则。
-        let extraction = #"(?m)^[ \t]*idMatch[ \t]*[:=][ \t]*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|/((?:\\.|[^/\n\\])*)/([A-Za-z]*))"#
+        // 兼容几种常见的源写法：
+        //   idMatch: "..."
+        //   idMatch = '...'
+        //   class X { idMatch = /.../i }
+        //   ...;idMatch="..."
+        // 只接受行首、代码块开头或分号/逗号后面的赋值，避免把注释里的同名字样
+        // 当成真实规则；真正的动态赋值（不是字面量）仍然识别不了。
+        let extraction = #"(?m)(?:^|[;{},])[ \t]*(?:this\.)?idMatch[ \t]*[:=][ \t]*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|/((?:\\.|[^/\n\\])*)/([A-Za-z]*))"#
         guard let regex = try? NSRegularExpression(pattern: extraction) else { return nil }
         let ns = js as NSString
         guard let match = regex.firstMatch(in: js,

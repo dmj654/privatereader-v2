@@ -34,6 +34,40 @@ final class SourceHealthCheckerTests: XCTestCase {
     </body></html>
     """
 
+    private static let detailHTML = """
+    <html><body>
+      <div class="title">剑来</div>
+      <div class="author">烽火</div>
+      <div class="chapter"><a href="/c/1">第一章</a></div>
+      <div class="chapter"><a href="/c/2">第二章</a></div>
+    </body></html>
+    """
+
+    private func makeDeepSource() -> LegadoSource {
+        LegadoSource(
+            id: "deep",
+            name: "深度测试源",
+            url: "https://example.com",
+            enabled: true,
+            searchUrl: "https://example.com/search?q={{key}}",
+            ruleSearch: SearchRule(
+                bookList: ".book",
+                name: ".name@text",
+                author: ".author@text",
+                bookUrl: ".name@href"
+            ),
+            ruleBookInfo: BookInfoRule(
+                name: ".title@text",
+                author: ".author@text"
+            ),
+            ruleToc: TocRule(
+                chapterList: ".chapter",
+                chapterName: "tag.a@text",
+                chapterUrl: "tag.a@href"
+            )
+        )
+    }
+
     override func tearDown() {
         StaticURLProtocol.routes = [:]
         super.tearDown()
@@ -57,8 +91,122 @@ final class SourceHealthCheckerTests: XCTestCase {
         XCTAssertTrue(status.isHealthy)
     }
 
-    func testSlowSourceTimesOutInsteadOfWaitingRequestTimeout() async {
-        let checker = SourceHealthChecker(client: makeClient(SlowURLProtocol.self))
+    func testDeepCheckVerifiesDetailAndToc() async {
+        StaticURLProtocol.routes = [
+            "/search": (200, Data(Self.searchHTML.utf8), "text/html; charset=utf-8"),
+            "/b/1": (200, Data(Self.detailHTML.utf8), "text/html; charset=utf-8")
+        ]
+        let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
+
+        let status = await checker.check(makeDeepSource(), deep: true, timeout: 2)
+
+        guard case .okDeep(let ms, let count, let chapters) = status else {
+            return XCTFail("深度检测应当通过搜索、详情、目录，实际 \(status)")
+        }
+        XCTAssertGreaterThanOrEqual(ms, 0)
+        XCTAssertEqual(count, 2)
+        XCTAssertEqual(chapters, 2)
+        XCTAssertTrue(status.isHealthy)
+    }
+
+    func testDeepCheckMarksDetailFailureAsPartial() async {
+        StaticURLProtocol.routes = [
+            "/search": (200, Data(Self.searchHTML.utf8), "text/html; charset=utf-8")
+            // /b/1 不配置 → 404
+        ]
+        let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
+
+        let status = await checker.check(makeDeepSource(), deep: true, timeout: 2)
+
+        guard case .partial(let message) = status else {
+            return XCTFail("搜索成功但详情失败应当标为部分可用，实际 \(status)")
+        }
+        XCTAssertTrue(message.contains("详情"), "错误要指出是详情阶段：\(message)")
+        XCTAssertFalse(status.isDefiniteFailure, "详情失败不能直接当成可删除的失效源")
+    }
+
+    func testDeepCheckMarksEmptyTocAsPartial() async {
+        StaticURLProtocol.routes = [
+            "/search": (200, Data(Self.searchHTML.utf8), "text/html; charset=utf-8"),
+            "/b/1": (200, Data("<html><body><div class=\"title\">剑来</div></body></html>".utf8),
+                     "text/html; charset=utf-8")
+        ]
+        let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
+
+        let status = await checker.check(makeDeepSource(), deep: true, timeout: 2)
+
+        guard case .partial(let message) = status else {
+            return XCTFail("目录为空应当标为部分可用，实际 \(status)")
+        }
+        XCTAssertTrue(message.contains("目录"), "错误要指出是目录阶段：\(message)")
+    }
+
+    func testDeepVeneraCheckVerifiesDetailAndToc() async {
+        let script = makeVeneraDeepScript(loadInfoThrows: false)
+        let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
+        let source = VeneraSource(id: "v-deep", key: "v-deep", name: "Venera 深度源", js: script)
+
+        let status = await checker.check(source, keyword: "斗破", timeout: 3, deep: true)
+
+        guard case .okDeep(let ms, let count, let chapters) = status else {
+            return XCTFail("Venera 深度检测应当通过，实际 \(status)")
+        }
+        XCTAssertGreaterThanOrEqual(ms, 0)
+        XCTAssertEqual(count, 1)
+        XCTAssertEqual(chapters, 2)
+    }
+
+    func testDeepVeneraDetailFailureIsPartial() async {
+        let script = makeVeneraDeepScript(loadInfoThrows: true)
+        let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
+        let source = VeneraSource(id: "v-bad", key: "v-bad", name: "Venera 坏详情", js: script)
+
+        let status = await checker.check(source, keyword: "斗破", timeout: 3, deep: true)
+
+        guard case .partial(let message) = status else {
+            return XCTFail("Venera 详情失败应当标为部分可用，实际 \(status)")
+        }
+        XCTAssertTrue(message.contains("详情"))
+        XCTAssertFalse(status.isDefiniteFailure)
+    }
+
+    private func makeVeneraDeepScript(loadInfoThrows: Bool) -> String {
+        """
+        class Probe extends ComicSource {
+            name = "Probe"
+            key = "probe"
+            version = "1.0"
+            search = {
+                load: async () => ({
+                    comics: [{
+                        id: "c1",
+                        title: "斗破苍穹",
+                        subTitle: "作者",
+                        cover: "",
+                        description: "",
+                        tags: []
+                    }],
+                    maxPage: 1
+                })
+            }
+            comic = {
+                loadInfo: async (id) => {
+                    \(loadInfoThrows ? "throw '详情接口失败';" : "")
+                    return {
+                        title: "斗破苍穹",
+                        cover: "",
+                        description: "",
+                        tags: {},
+                        chapters: new Map([["e1", "第一话"], ["e2", "第二话"]])
+                    };
+                },
+                loadEp: async (comicId, epId) => ({ images: [] })
+            }
+        }
+        """
+    }
+
+    func testSlowSourceTimesOutInsteadOfWaitingRequestTimeout() async {        let checker = SourceHealthChecker(client: makeClient(SlowURLProtocol.self))
         let started = Date()
 
         let status = await checker.check(makeSource(), timeout: 0.2)
@@ -131,6 +279,9 @@ final class SourceHealthCheckerTests: XCTestCase {
 
     func testLabelIsShortEnoughForList() {
         XCTAssertEqual(SourceHealthStatus.ok(milliseconds: 128, sampleCount: 3).label, "128ms · 3 条")
+        XCTAssertEqual(SourceHealthStatus.okDeep(milliseconds: 128, sampleCount: 3, chapterCount: 8).label,
+                       "128ms · 3 条 · 8 章")
+        XCTAssertEqual(SourceHealthStatus.partial("目录为空").label, "部分可用")
         XCTAssertEqual(SourceHealthStatus.timeout.label, "超时（可重试）")
         XCTAssertEqual(SourceHealthStatus.failed("x").label, "失败")
         XCTAssertEqual(SourceHealthStatus.skipped("已关闭").label, "已关闭")

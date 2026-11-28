@@ -9,6 +9,7 @@ public enum VeneraEngineError: LocalizedError {
     case script(String)
     case emptyResult(String)
     case unsupported(String)
+    case idLookup(String)
 
     public var errorDescription: String? {
         switch self {
@@ -17,6 +18,7 @@ public enum VeneraEngineError: LocalizedError {
         case .script(let message): return "Venera 源脚本报错：\(message)"
         case .emptyResult(let what): return "Venera 源没有返回\(what)。"
         case .unsupported(let message): return message
+        case .idLookup(let message): return "编号直达失败：\(message)"
         }
     }
 }
@@ -58,20 +60,51 @@ public final class VeneraRuntime: @unchecked Sendable {
     // MARK: - 对外
 
     /// 搜索。Venera 源如果声明了 `idMatch`（例如禁漫天堂 `^(\\d+|jm\\d+)$`），
-    /// 输入纯编号或 `jm+编号` 时先直接拉详情，不再当成普通关键词搜。
+    /// 输入纯编号或 `jm+编号` 时先直接拉详情；详情失败时仍回退普通关键词搜索。
     public func search(source: VeneraSource,
                        keyword: String,
                        page: Int = 1,
                        timeout: TimeInterval = 30) async throws -> [OnlineBook] {
+        try await search(source: source,
+                         keyword: keyword,
+                         page: page,
+                         timeout: timeout,
+                         directOnly: false)
+    }
+
+    /// 用户在数字编号源选择页选中某个源后调用：只允许编号直达，
+    /// 编号无效、详情打不开时明确报错，不再把编号当关键词回退搜索。
+    public func searchByID(source: VeneraSource,
+                           keyword: String,
+                           timeout: TimeInterval = 40) async throws -> [OnlineBook] {
+        do {
+            return try await search(source: source,
+                                    keyword: keyword,
+                                    page: 1,
+                                    timeout: timeout,
+                                    directOnly: true)
+        } catch let error as VeneraEngineError {
+            if case .script(let message) = error {
+                throw VeneraEngineError.idLookup(message)
+            }
+            throw error
+        }
+    }
+
+    private func search(source: VeneraSource,
+                        keyword: String,
+                        page: Int,
+                        timeout: TimeInterval,
+                        directOnly: Bool) async throws -> [OnlineBook] {
         let result = try await perform(source: source, timeout: timeout, call: """
         await (async () => {
             const rawKeyword = \(jsLiteral(keyword));
             const keywordText = String(rawKeyword || '').trim();
             const idMatcher = __source.idMatch;
-            if (keywordText
-                && idMatcher
-                && __source.comic
-                && typeof __source.comic.loadInfo === 'function') {
+            const directOnly = \(directOnly ? "true" : "false");
+            let directError = null;
+
+            if (idMatcher && __source.comic && typeof __source.comic.loadInfo === 'function') {
                 try {
                     let re = null;
                     if (typeof idMatcher === 'string') {
@@ -123,10 +156,22 @@ public final class VeneraRuntime: @unchecked Sendable {
                                 __directID: comicId
                             });
                         }
+                        directError = '源没有返回编号 ' + comicId + ' 的详情';
+                    } else {
+                        directError = '编号 ' + keywordText + ' 不匹配源的 idMatch 规则';
                     }
                 } catch (e) {
-                    // 编号不存在或详情失败时，仍按普通关键词继续搜索。
+                    directError = '编号 ' + keywordText + ' 在这个源打不开：'
+                        + String((e && e.message) ? e.message : e);
                 }
+            } else if (idMatcher) {
+                directError = '这个源没有实现 comic.loadInfo，不能用编号直达';
+            } else {
+                directError = '这个源没有声明 idMatch，不能用编号直达';
+            }
+
+            if (directOnly) {
+                throw directError || '编号直达失败';
             }
 
             const api = __source.search || {};
@@ -496,7 +541,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.9.4';")
+        context.evaluateScript("globalThis.appVersion = '1.9.5';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 

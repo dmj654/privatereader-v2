@@ -220,6 +220,49 @@ final class VeneraRuntimeTests: XCTestCase {
         XCTAssertEqual(normal.first?.name, "斗破")
     }
 
+    /// 选中某个源后，编号无效/详情失败必须明确报错，不能悄悄退回关键词搜索。
+    func testSearchByIDDoesNotSilentlyFallback() async throws {
+        let runtime = VeneraRuntime()
+        let script = """
+        class Probe extends ComicSource {
+            name = "Probe"
+            key = "probe"
+            version = "1.0"
+            idMatch = "^(\\\\d+|jm\\\\d+)$"
+            search = {
+                load: async (keyword, options, page) => ({
+                    comics: [{
+                        id: "fallback",
+                        title: keyword,
+                        subTitle: "",
+                        cover: "",
+                        description: "",
+                        tags: []
+                    }],
+                    maxPage: 1
+                })
+            }
+            comic = {
+                loadInfo: async (id) => { throw "详情接口失败"; },
+                loadEp: async (comicId, epId) => ({ images: [] })
+            }
+        }
+        """
+        let src = source(script)
+
+        do {
+            _ = try await runtime.searchByID(source: src, keyword: "12345")
+            XCTFail("编号详情失败时 searchByID 不应返回普通搜索结果")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("编号直达失败"),
+                          "错误要说清是编号直达失败，实际：\(error.localizedDescription)")
+        }
+
+        // 普通全源搜索仍保留 1.9.3 的回退能力。
+        let normal = try await runtime.search(source: src, keyword: "12345")
+        XCTAssertEqual(normal.first?.bookUrl, "fallback")
+    }
+
     func testVeneraIDMatchExtraction() {
         let script = """
         class Probe extends ComicSource {
@@ -231,5 +274,13 @@ final class VeneraRuntimeTests: XCTestCase {
         XCTAssertEqual(VeneraIDMatch.id(from: "12345", source: src), "12345")
         XCTAssertEqual(VeneraIDMatch.id(from: "jm987", source: src), "jm987")
         XCTAssertNil(VeneraIDMatch.id(from: "斗破", source: src))
+
+        // minify 后 idMatch 挤在分号/大括号后面，也要能读到。
+        let minified = """
+        class Probe extends ComicSource{name="P";idMatch="^(\\\\d+|jm\\\\d+)$";search={load:async()=>({comics:[],maxPage:1})}}
+        """
+        let minifiedSource = source(minified)
+        XCTAssertEqual(VeneraIDMatch.pattern(from: minifiedSource), #"^(\d+|jm\d+)$"#)
+        XCTAssertEqual(VeneraIDMatch.id(from: "456", source: minifiedSource), "456")
     }
 }

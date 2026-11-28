@@ -8,11 +8,12 @@ struct IDSourcePickerSheet: View {
     let query: String
     let options: [SearchTarget]
     let onSelect: (SearchTarget) -> Void
+    let onSearchAll: () -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     private var sheetHeight: CGFloat {
-        min(430, 152 + CGFloat(options.count) * 74)
+        min(460, 208 + CGFloat(options.count) * 74)
     }
 
     var body: some View {
@@ -95,10 +96,30 @@ struct IDSourcePickerSheet: View {
                 .padding(.horizontal, 18)
             }
 
+            Button {
+                onSearchAll()
+                dismiss()
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "square.stack.3d.up")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("所有漫画源都试一下")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundStyle(Palette.accent)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(Palette.accentSoft)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 22)
+            .padding(.top, 8)
+
             Button("取消") { dismiss() }
                 .buttonStyle(SecondaryButtonStyle(height: 42))
                 .padding(.horizontal, 22)
-                .padding(.top, 10)
+                .padding(.top, 8)
                 .padding(.bottom, 20)
         }
         .background(Palette.bg)

@@ -91,6 +91,46 @@ final class SearchCoordinatorTests: XCTestCase {
         XCTAssertEqual(results.count, 1)
         XCTAssertNotNil(results[0].errorText, "超时要作为一种失败结果返回，不能把整页卡住")
     }
+
+    func testDirectIDModeDoesNotFallbackToKeywordSearch() async {
+        let script = """
+        class Probe extends ComicSource {
+            name = "Probe"
+            key = "probe"
+            version = "1.0"
+            idMatch = "^(\\\\d+|jm\\\\d+)$"
+            search = {
+                load: async (keyword, options, page) => ({
+                    comics: [{
+                        id: "fallback",
+                        title: keyword,
+                        subTitle: "",
+                        cover: "",
+                        description: "",
+                        tags: []
+                    }],
+                    maxPage: 1
+                })
+            }
+            comic = {
+                loadInfo: async (id) => { throw "详情接口失败"; },
+                loadEp: async (comicId, epId) => ({ images: [] })
+            }
+        }
+        """
+        let target = SearchTarget.venera(VeneraSource(
+            id: "v", key: "probe", name: "Venera 探针", js: script
+        ))
+
+        var results: [SourceSearchResult] = []
+        let stream = await makeCoordinator().search(sources: [target], key: "12345", directID: true)
+        for await result in stream { results.append(result) }
+
+        XCTAssertEqual(results.count, 1)
+        XCTAssertTrue(results[0].books.isEmpty, "选中源编号失败时不能返回普通搜索结果")
+        XCTAssertTrue(results[0].errorText?.contains("编号直达失败") == true,
+                      "错误要说清是编号直达失败，实际：\(results[0].errorText ?? "nil")")
+    }
 }
 
 /// 延迟返回的协议，用来验证总超时。

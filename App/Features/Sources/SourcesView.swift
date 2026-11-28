@@ -48,13 +48,14 @@ struct SourcesView: View {
     }
 
     enum HealthFilter: String, CaseIterable, Identifiable {
-        case all, ok, failed, disabled
+        case all, ok, partial, failed, disabled
 
         var id: String { rawValue }
         var title: String {
             switch self {
             case .all: return "全部"
             case .ok: return "正常"
+            case .partial: return "部分可用"
             case .failed: return "失败"
             case .disabled: return "已关闭"
             }
@@ -65,8 +66,10 @@ struct SourcesView: View {
         var parts = ["启用 \(enabledCount) 条", "共 \(kindSources.count) 条"]
         let failed = kindSources.filter { $0.enabled && persistedFailedIDs.contains($0.id) }.count
         let timedOut = kindSources.filter { $0.enabled && persistedTimeoutIDs.contains($0.id) }.count
+        let partial = kindSources.filter { $0.enabled && health[$0.id]?.isPartial == true }.count
         if failed > 0 { parts.append("上次失败 \(failed) 条") }
         if timedOut > 0 { parts.append("上次超时 \(timedOut) 条") }
+        if partial > 0 { parts.append("部分可用 \(partial) 条") }
         return parts.joined(separator: " · ")
     }
 
@@ -86,6 +89,8 @@ struct SourcesView: View {
                 return !source.enabled
             case .ok:
                 return health[source.id]?.isHealthy == true
+            case .partial:
+                return health[source.id]?.isPartial == true
             case .failed:
                 guard source.enabled else { return false }
                 return persistedFailedIDs.contains(source.id)
@@ -310,7 +315,7 @@ struct SourcesView: View {
     }
 
     private var maintenanceHint: some View {
-        Text("「测一下全部」只测试当前分类里启用的源：普通源首轮 5 秒，Venera 12 秒；超时会自动用普通 20 秒、Venera 45 秒重试一次。仍超时只记为超时，不算失效、不会自动删除。")
+        Text("「测一下全部」只测试当前分类里启用的源：普通源首轮 5 秒，Venera 12 秒；超时会自动用普通 20 秒、Venera 45 秒重试一次。仍超时只记为超时，不算失效、不会自动删除。单源「测一下」和「测所选」会继续打开第一条结果的详情和目录：搜索正常但详情/目录坏掉的源会标成「部分可用」，也不会自动删除。")
             .font(Typo.micro)
             .foregroundStyle(Palette.ink3)
             .lineSpacing(2)
@@ -547,6 +552,10 @@ struct SourcesView: View {
         switch status {
         case .ok(let ms, let count):
             return "正常 · \(ms)ms · \(count) 条结果"
+        case .okDeep(let ms, let count, let chapters):
+            return "正常 · \(ms)ms · \(count) 条结果 · 详情和目录通过 · \(chapters) 章"
+        case .partial(let message):
+            return "部分可用 · \(message)"
         case .timeout:
             return "超时 · 首轮和加长重试都没响应（不是失效，可稍后再测）"
         case .failed(let message):
@@ -564,7 +573,8 @@ struct SourcesView: View {
             return Palette.ink3.opacity(0.6)
         }
         switch status {
-        case .ok: return Color(hex: 0x4E8A5F)
+        case .ok, .okDeep: return Color(hex: 0x4E8A5F)
+        case .partial: return Color(hex: 0xC08A3E)
         case .timeout: return Color(hex: 0xC08A3E)
         case .failed: return Palette.danger
         case .skipped: return Palette.ink3.opacity(0.6)
@@ -687,9 +697,9 @@ struct SourcesView: View {
             let status: SourceHealthStatus
             switch target {
             case .legado(let executable):
-                status = await checker.check(executable, retryTimeout: 20)
+                status = await checker.check(executable, retryTimeout: 20, deep: true)
             case .venera(let script):
-                status = await checker.check(script, retryTimeout: 45)
+                status = await checker.check(script, retryTimeout: 45, deep: true)
             case nil:
                 status = .failed("书源解析失败，建议重新导入")
             }
@@ -702,15 +712,15 @@ struct SourcesView: View {
     }
 
     private func checkAll() {
-        startBatch(kindSources.filter(\.enabled))
+        startBatch(kindSources.filter(\.enabled), deep: false)
     }
 
     private func checkSelected() {
         let targets = kindSources.filter { selectedIDs.contains($0.id) }
-        startBatch(targets)
+        startBatch(targets, deep: true)
     }
 
-    private func startBatch(_ targets: [BookSource]) {
+    private func startBatch(_ targets: [BookSource], deep: Bool = false) {
         // 检测中再点 = 停止
         if isCheckingAll {
             checkTask?.cancel()
@@ -747,9 +757,9 @@ struct SourcesView: View {
                         }
                         switch target {
                         case .legado(let executable):
-                            return (source.id, await checker.check(executable, retryTimeout: 20))
+                            return (source.id, await checker.check(executable, retryTimeout: 20, deep: deep))
                         case .venera(let script):
-                            return (source.id, await checker.check(script, retryTimeout: 45))
+                            return (source.id, await checker.check(script, retryTimeout: 45, deep: deep))
                         }
                     }
                 }
@@ -774,9 +784,9 @@ struct SourcesView: View {
                             }
                             switch target {
                             case .legado(let executable):
-                                return (source.id, await checker.check(executable, retryTimeout: 20))
+                                return (source.id, await checker.check(executable, retryTimeout: 20, deep: deep))
                             case .venera(let script):
-                                return (source.id, await checker.check(script, retryTimeout: 45))
+                                return (source.id, await checker.check(script, retryTimeout: 45, deep: deep))
                             }
                         }
                     }
@@ -789,19 +799,20 @@ struct SourcesView: View {
                 // 取消时不要弹汇总
                 guard checkedCount >= targets.count else { return }
 
-                var ok = 0, failed = 0, timedOut = 0
+                var ok = 0, failed = 0, timedOut = 0, partial = 0
                 for source in targets {
                     switch health[source.id] {
-                    case .ok: ok += 1
+                    case .ok, .okDeep: ok += 1
+                    case .partial: partial += 1
                     case .failed: failed += 1
                     case .timeout: timedOut += 1
                     case .skipped, .none: break
                     }
                 }
                 if failed > 0 {
-                    errorMessage = "检测完成：\(ok) 条正常，\(failed) 条明确失败，\(timedOut) 条超时（已保留，可稍后再测）。可以点右上角菜单关闭或删除明确失败的源。"
-                } else if timedOut > 0 {
-                    errorMessage = "检测完成：没有明确失败；\(ok) 条正常，\(timedOut) 条超时（已自动重试仍无响应，保留着，不会删除）。"
+                    errorMessage = "检测完成：\(ok) 条正常，\(partial) 条部分可用（详情/目录异常），\(failed) 条明确失败，\(timedOut) 条超时（已保留，可稍后再测）。可以点右上角菜单关闭或删除明确失败的源。"
+                } else if timedOut > 0 || partial > 0 {
+                    errorMessage = "检测完成：没有明确失败；\(ok) 条正常，\(partial) 条部分可用（详情/目录异常），\(timedOut) 条超时（已自动重试仍无响应，保留着，不会删除）。"
                 }
             }
         }
@@ -837,6 +848,14 @@ struct SourcesView: View {
         switch status {
         case .ok(let ms, let count):
             text = "ok \(ms)ms \(count)"
+            persistedFailedIDs.remove(source.id)
+            persistedTimeoutIDs.remove(source.id)
+        case .okDeep(let ms, let count, let chapters):
+            text = "ok deep \(ms)ms \(count) \(chapters)"
+            persistedFailedIDs.remove(source.id)
+            persistedTimeoutIDs.remove(source.id)
+        case .partial(let message):
+            text = "partial: \(message)"
             persistedFailedIDs.remove(source.id)
             persistedTimeoutIDs.remove(source.id)
         case .timeout:

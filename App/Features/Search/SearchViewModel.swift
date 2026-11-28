@@ -57,13 +57,21 @@ final class SearchViewModel: ObservableObject {
     /// 非空时搜索页弹出“选择漫画源”，用户选一个再开始搜。
     @Published private(set) var idSourceOptions: [SearchTarget] = []
     @Published private(set) var idPromptQuery: String?
+    /// 纯数字/`jm+数字` 但没有任何启用的漫画源能匹配时，不再静默回退，
+    /// 用一个明确提示让用户决定是否仍按普通关键词搜全部源。
+    @Published private(set) var idNoMatch = false
+    @Published private(set) var idNoMatchReason = ""
     @Published var errorMessage: String?
     @Published var filters = Filters()
 
     private var task: Task<Void, Never>?
     private var coordinator: SearchCoordinator?
     private var searchedKey = ""
+    private var searchedDirectID = false
     private var failedSources: [SearchTarget] = []
+    private var failureMessages: [String] = []
+    /// 数字编号弹窗出现时保存当时启用的全部漫画源，供“所有源都试一下”使用。
+    private var idAllSources: [SearchTarget] = []
     private static let historyKey = "search.history"
 
     /// 每个分类各自留一份结果。来回切「小说/漫画」不该重新搜、也不该白屏。
@@ -146,6 +154,10 @@ final class SearchViewModel: ObservableObject {
         errorMessage = nil
         idSourceOptions = []
         idPromptQuery = nil
+        idNoMatch = false
+        idNoMatchReason = ""
+        idAllSources = []
+        failureMessages = []
         // 新关键词先清空旧结果，数字编号弹窗取消后也不会留下上一本书。
         books = []
         hasSearched = false
@@ -189,6 +201,11 @@ final class SearchViewModel: ObservableObject {
             // 输入纯数字 / jm+数字时，先问“搜哪个源”。只有源脚本里声明了
             // idMatch 且当前输入能匹配这个正则的源，才会出现在弹窗里。
             if wantedComic && self.looksLikeComicID(key) {
+                let idSourceCount = sources.reduce(0) { count, target in
+                    guard let source = target.veneraSource,
+                          VeneraIDMatch.pattern(from: source) != nil else { return count }
+                    return count + 1
+                }
                 let candidates = sources.compactMap { target -> SearchTarget? in
                     guard let source = target.veneraSource,
                           VeneraIDMatch.id(from: key, source: source) != nil else {
@@ -199,33 +216,65 @@ final class SearchViewModel: ObservableObject {
                     $0.name.localizedStandardCompare($1.name) == .orderedAscending
                 }
 
+                self.idAllSources = sources
                 if !candidates.isEmpty {
                     self.isSearching = false
                     self.idPromptQuery = key
                     self.idSourceOptions = candidates
                     return
                 }
+
+                self.isSearching = false
+                self.idPromptQuery = key
+                self.idNoMatch = true
+                self.idNoMatchReason = idSourceCount == 0
+                    ? "没有从启用的漫画源里读到 idMatch。可能是这些源不支持编号，或源脚本的写法目前识别不了。"
+                    : "有 \(idSourceCount) 个启用漫画源声明了 idMatch，但规则都不匹配「\(key)」。"
+                return
             }
 
             await self.beginSearch(env: env, sources: sources, key: key)
         }
     }
 
-    /// 用户从数字编号源选择弹窗里点了一个源：只搜这个源。
+    /// 用户从数字编号源选择弹窗里点了一个源：只搜这个源，且只允许编号直达。
     func searchUsingID(source: SearchTarget, env: AppEnvironment) {
         guard let key = idPromptQuery else { return }
-        idSourceOptions = []
-        idPromptQuery = nil
+        clearIDPrompt()
         task?.cancel()
         task = Task { [weak self] in
             guard let self else { return }
-            await self.beginSearch(env: env, sources: [source], key: key)
+            await self.beginSearch(env: env, sources: [source], key: key, directID: true)
+        }
+    }
+
+    /// 用户不想选单个源，或没有源能匹配编号时：让当时启用的全部漫画源
+    /// 都按普通关键词搜一遍（其中声明了 idMatch 的源仍会尝试编号直达）。
+    func searchAllUsingID(env: AppEnvironment) {
+        guard let key = idPromptQuery, !idAllSources.isEmpty else { return }
+        let sources = idAllSources
+        clearIDPrompt()
+        task?.cancel()
+        task = Task { [weak self] in
+            guard let self else { return }
+            await self.beginSearch(env: env, sources: sources, key: key, directID: false)
         }
     }
 
     func cancelIDSourcePicker() {
+        clearIDPrompt()
+    }
+
+    func cancelIDNoMatchPrompt() {
+        clearIDPrompt()
+    }
+
+    private func clearIDPrompt() {
         idSourceOptions = []
         idPromptQuery = nil
+        idNoMatch = false
+        idNoMatchReason = ""
+        idAllSources = []
     }
 
     private func looksLikeComicID(_ key: String) -> Bool {
@@ -235,10 +284,12 @@ final class SearchViewModel: ObservableObject {
 
     private func beginSearch(env: AppEnvironment,
                              sources: [SearchTarget],
-                             key: String) async {
+                             key: String,
+                             directID: Bool = false) async {
         guard !Task.isCancelled else { return }
 
         searchedKey = key
+        searchedDirectID = directID
         remember(key)
         isSearching = true
         hasSearched = true
@@ -247,6 +298,7 @@ final class SearchViewModel: ObservableObject {
         failedCount = 0
         finishedSources = 0
         failedSources = []
+        failureMessages = []
         sourceNames = [:]
         totalSources = sources.count
 
@@ -254,13 +306,23 @@ final class SearchViewModel: ObservableObject {
                                            venera: env.veneraRuntime)
         self.coordinator = coordinator
 
-        for await result in await coordinator.search(sources: sources, key: key) {
+        for await result in await coordinator.search(sources: sources,
+                                                     key: key,
+                                                     directID: directID) {
             if Task.isCancelled { return }
             apply(result)
         }
 
         isSearching = false
-        if failedCount == 0 && books.isEmpty && finishedSources > 0 {
+        if books.isEmpty, failedCount > 0 {
+            if totalSources == 1, let first = failureMessages.first {
+                errorMessage = first
+            } else {
+                let details = failureMessages.prefix(3).joined(separator: "；")
+                let more = failureMessages.count > 3 ? "……" : ""
+                errorMessage = "\(failedCount) 个源都失败了：\(details)\(more)"
+            }
+        } else if failedCount == 0 && books.isEmpty && finishedSources > 0 {
             errorMessage = "已执行 \(finishedSources) 个源，但规则都解析出 0 条。请到「发现 → 书源」对这几个源点「测一下」，看具体返回。"
         }
         saveCache()
@@ -277,6 +339,8 @@ final class SearchViewModel: ObservableObject {
         task?.cancel()
         task = nil
         isSearching = false
+        clearIDPrompt()
+        failureMessages = []
         kind = newKind
         errorMessage = nil
 
@@ -302,6 +366,8 @@ final class SearchViewModel: ObservableObject {
         let retry = failedSources
         failedSources = []
         failedCount = 0
+        failureMessages = []
+        errorMessage = nil
         isSearching = true
 
         let coordinator = coordinator ?? SearchCoordinator(client: env.sourceClient,
@@ -310,10 +376,15 @@ final class SearchViewModel: ObservableObject {
 
         Task { [weak self] in
             guard let self else { return }
-            for await result in await coordinator.search(sources: retry, key: self.searchedKey) {
+            for await result in await coordinator.search(sources: retry,
+                                                         key: self.searchedKey,
+                                                         directID: self.searchedDirectID) {
                 self.apply(result)
             }
             self.isSearching = false
+            if self.books.isEmpty, self.failedCount > 0, let first = self.failureMessages.first {
+                self.errorMessage = first
+            }
             self.saveCache()
         }
     }
@@ -342,6 +413,7 @@ final class SearchViewModel: ObservableObject {
         if let error = result.errorText, !error.isEmpty {
             failedCount += 1
             failedSources.append(result.source)
+            failureMessages.append("「\(result.source.name)」：\(error)")
             return
         }
 

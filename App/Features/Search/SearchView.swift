@@ -22,9 +22,12 @@ struct SearchView: View {
                         }
                     )) {
                         IDSourcePickerSheet(query: model.idPromptQuery ?? model.query,
-                                            options: model.idSourceOptions) { source in
+                                            options: model.idSourceOptions,
+                                            onSelect: { source in
                             model.searchUsingID(source: source, env: env)
-                        }
+                        }, onSearchAll: {
+                            model.searchAllUsingID(env: env)
+                        })
                     }
                 kindPicker
                 content
@@ -80,6 +83,21 @@ struct SearchView: View {
         .sheet(isPresented: $showFilters) {
             SearchFilterSheet(model: model)
                 .presentationDetents([.height(360)])
+        }
+        .alert("没有匹配的编号源", isPresented: Binding(
+            get: { model.idNoMatch },
+            set: { presented in
+                if !presented { model.cancelIDNoMatchPrompt() }
+            }
+        )) {
+            Button("搜索全部源") {
+                model.searchAllUsingID(env: env)
+            }
+            Button("取消", role: .cancel) {
+                model.cancelIDNoMatchPrompt()
+            }
+        } message: {
+            Text(model.idNoMatchReason)
         }
     }
 
