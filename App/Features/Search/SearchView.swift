@@ -15,6 +15,17 @@ struct SearchView: View {
 
             VStack(spacing: 0) {
                 searchBar
+                    .sheet(isPresented: Binding(
+                        get: { !model.idSourceOptions.isEmpty },
+                        set: { presented in
+                            if !presented { model.cancelIDSourcePicker() }
+                        }
+                    )) {
+                        IDSourcePickerSheet(query: model.idPromptQuery ?? model.query,
+                                            options: model.idSourceOptions) { source in
+                            model.searchUsingID(source: source, env: env)
+                        }
+                    }
                 kindPicker
                 content
                     // 点结果/空白区域收起键盘；搜索框本身不挂这个手势，

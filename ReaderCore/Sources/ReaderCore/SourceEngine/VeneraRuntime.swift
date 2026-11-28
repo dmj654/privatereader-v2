@@ -81,7 +81,7 @@ public final class VeneraRuntime: @unchecked Sendable {
                     }
                     const match = re ? keywordText.match(re) : null;
                     if (match && match[0]) {
-                        const comicId = String(match[0]);
+                        let comicId = String(match[0]).replace(/^JM/i, 'jm');
                         const d = await __source.comic.loadInfo(comicId);
                         if (d && String(d.title || '').length > 0) {
                             const tagObject = d.tags && typeof d.tags === 'object' ? d.tags : {};
@@ -496,7 +496,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.9.3';")
+        context.evaluateScript("globalThis.appVersion = '1.9.4';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 

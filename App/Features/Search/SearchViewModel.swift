@@ -53,6 +53,10 @@ final class SearchViewModel: ObservableObject {
     @Published private(set) var failedCount = 0
     @Published private(set) var hasSearched = false
     @Published private(set) var sourceNames: [String: String] = [:]
+    /// 输入数字后，声明了 idMatch 且匹配这个编号的漫画源。
+    /// 非空时搜索页弹出“选择漫画源”，用户选一个再开始搜。
+    @Published private(set) var idSourceOptions: [SearchTarget] = []
+    @Published private(set) var idPromptQuery: String?
     @Published var errorMessage: String?
     @Published var filters = Filters()
 
@@ -131,20 +135,25 @@ final class SearchViewModel: ObservableObject {
     func search(env: AppEnvironment, force: Bool = false) {
         let key = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return }
-        guard force || key != searchedKey || books.isEmpty else { return }
+        // 普通搜索仍遵守“同一个关键词不重复打网络”；数字编号则每次点搜索
+        // 都重新弹源选择，方便用户换一个声明了 idMatch 的源再查。
+        if !looksLikeComicID(key) {
+            guard force || key != searchedKey || books.isEmpty else { return }
+        }
 
         task?.cancel()
-        searchedKey = key
-        remember(key)
-
         isSearching = true
-        hasSearched = true
         errorMessage = nil
+        idSourceOptions = []
+        idPromptQuery = nil
+        // 新关键词先清空旧结果，数字编号弹窗取消后也不会留下上一本书。
         books = []
+        hasSearched = false
         failedCount = 0
         finishedSources = 0
         totalSources = 0
         failedSources = []
+        sourceNames = [:]
 
         let wantedComic = kind == .comic
 
@@ -172,24 +181,89 @@ final class SearchViewModel: ObservableObject {
                 return
             }
 
-            self.totalSources = sources.count
-            self.finishedSources = 0
-
-            let coordinator = SearchCoordinator(client: env.sourceClient,
-                                               venera: env.veneraRuntime)
-            self.coordinator = coordinator
-
-            for await result in await coordinator.search(sources: sources, key: key) {
-                if Task.isCancelled { return }
-                self.apply(result)
+            if Task.isCancelled {
+                self.isSearching = false
+                return
             }
 
-            self.isSearching = false
-            if self.failedCount == 0 && self.books.isEmpty && self.finishedSources > 0 {
-                self.errorMessage = "已执行 \(self.finishedSources) 个源，但规则都解析出 0 条。请到「发现 → 书源」对这几个源点「测一下」，看具体返回。"
+            // 输入纯数字 / jm+数字时，先问“搜哪个源”。只有源脚本里声明了
+            // idMatch 且当前输入能匹配这个正则的源，才会出现在弹窗里。
+            if wantedComic && self.looksLikeComicID(key) {
+                let candidates = sources.compactMap { target -> SearchTarget? in
+                    guard let source = target.veneraSource,
+                          VeneraIDMatch.id(from: key, source: source) != nil else {
+                        return nil
+                    }
+                    return target
+                }.sorted {
+                    $0.name.localizedStandardCompare($1.name) == .orderedAscending
+                }
+
+                if !candidates.isEmpty {
+                    self.isSearching = false
+                    self.idPromptQuery = key
+                    self.idSourceOptions = candidates
+                    return
+                }
             }
-            self.saveCache()
+
+            await self.beginSearch(env: env, sources: sources, key: key)
         }
+    }
+
+    /// 用户从数字编号源选择弹窗里点了一个源：只搜这个源。
+    func searchUsingID(source: SearchTarget, env: AppEnvironment) {
+        guard let key = idPromptQuery else { return }
+        idSourceOptions = []
+        idPromptQuery = nil
+        task?.cancel()
+        task = Task { [weak self] in
+            guard let self else { return }
+            await self.beginSearch(env: env, sources: [source], key: key)
+        }
+    }
+
+    func cancelIDSourcePicker() {
+        idSourceOptions = []
+        idPromptQuery = nil
+    }
+
+    private func looksLikeComicID(_ key: String) -> Bool {
+        key.range(of: #"^(?:jm)?[0-9]+$"#,
+                  options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    private func beginSearch(env: AppEnvironment,
+                             sources: [SearchTarget],
+                             key: String) async {
+        guard !Task.isCancelled else { return }
+
+        searchedKey = key
+        remember(key)
+        isSearching = true
+        hasSearched = true
+        errorMessage = nil
+        books = []
+        failedCount = 0
+        finishedSources = 0
+        failedSources = []
+        sourceNames = [:]
+        totalSources = sources.count
+
+        let coordinator = SearchCoordinator(client: env.sourceClient,
+                                           venera: env.veneraRuntime)
+        self.coordinator = coordinator
+
+        for await result in await coordinator.search(sources: sources, key: key) {
+            if Task.isCancelled { return }
+            apply(result)
+        }
+
+        isSearching = false
+        if failedCount == 0 && books.isEmpty && finishedSources > 0 {
+            errorMessage = "已执行 \(finishedSources) 个源，但规则都解析出 0 条。请到「发现 → 书源」对这几个源点「测一下」，看具体返回。"
+        }
+        saveCache()
     }
 
     func setKind(_ newKind: Kind, env: AppEnvironment) {
