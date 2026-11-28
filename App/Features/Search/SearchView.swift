@@ -91,7 +91,10 @@ struct SearchView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Palette.ink3)
 
-                TextField("书名或作者", text: $model.query)
+                TextField(model.kind == .comic
+                          ? "书名、作者或漫画 ID"
+                          : "书名或作者",
+                          text: $model.query)
                     .font(.system(size: 15))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()

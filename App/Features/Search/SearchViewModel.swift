@@ -95,7 +95,9 @@ final class SearchViewModel: ObservableObject {
 
         if filters.exactMatch, !key.isEmpty {
             list = list.filter {
-                $0.name.lowercased() == key || $0.author.lowercased() == key
+                $0.name.lowercased() == key
+                    || $0.author.lowercased() == key
+                    || $0.entries.contains { matchesID($0.bookUrl, key: key) }
             }
         }
         if filters.minSources > 1 {
@@ -114,6 +116,14 @@ final class SearchViewModel: ObservableObject {
             list.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         }
         return list
+    }
+
+    private func matchesID(_ bookUrl: String, key: String) -> Bool {
+        let url = bookUrl.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !url.isEmpty, !key.isEmpty else { return false }
+        let strippedURL = url.hasPrefix("jm") ? String(url.dropFirst(2)) : url
+        let strippedKey = key.hasPrefix("jm") ? String(key.dropFirst(2)) : key
+        return url == key || strippedURL == strippedKey
     }
 
     // MARK: 搜索

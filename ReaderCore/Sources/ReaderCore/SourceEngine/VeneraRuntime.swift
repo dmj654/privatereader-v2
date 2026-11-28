@@ -57,12 +57,78 @@ public final class VeneraRuntime: @unchecked Sendable {
 
     // MARK: - 对外
 
+    /// 搜索。Venera 源如果声明了 `idMatch`（例如禁漫天堂 `^(\\d+|jm\\d+)$`），
+    /// 输入纯编号或 `jm+编号` 时先直接拉详情，不再当成普通关键词搜。
     public func search(source: VeneraSource,
                        keyword: String,
                        page: Int = 1,
                        timeout: TimeInterval = 30) async throws -> [OnlineBook] {
         let result = try await perform(source: source, timeout: timeout, call: """
         await (async () => {
+            const rawKeyword = \(jsLiteral(keyword));
+            const keywordText = String(rawKeyword || '').trim();
+            const idMatcher = __source.idMatch;
+            if (keywordText
+                && idMatcher
+                && __source.comic
+                && typeof __source.comic.loadInfo === 'function') {
+                try {
+                    let re = null;
+                    if (typeof idMatcher === 'string') {
+                        re = new RegExp(idMatcher, 'i');
+                    } else if (typeof idMatcher.exec === 'function') {
+                        re = idMatcher;
+                    }
+                    const match = re ? keywordText.match(re) : null;
+                    if (match && match[0]) {
+                        const comicId = String(match[0]);
+                        const d = await __source.comic.loadInfo(comicId);
+                        if (d && String(d.title || '').length > 0) {
+                            const tagObject = d.tags && typeof d.tags === 'object' ? d.tags : {};
+                            const authorValue = tagObject['Author']
+                                ?? tagObject['author']
+                                ?? tagObject['作者']
+                                ?? '';
+                            const authorText = Array.isArray(authorValue)
+                                ? authorValue.map(v => String(v || '')).join(' / ')
+                                : String(authorValue || '');
+                            const tagValues = [];
+                            for (const value of Object.values(tagObject)) {
+                                if (Array.isArray(value)) {
+                                    for (const item of value) {
+                                        const text = String(item || '').trim();
+                                        if (text) tagValues.push(text);
+                                    }
+                                } else {
+                                    const text = String(value || '').trim();
+                                    if (text) tagValues.push(text);
+                                }
+                            }
+                            const chapterCount = d.chapters && typeof d.chapters.size === 'number'
+                                ? Number(d.chapters.size)
+                                : 0;
+                            return JSON.stringify({
+                                comics: [{
+                                    id: comicId,
+                                    title: String(d.title || ''),
+                                    subTitle: authorText,
+                                    cover: String(d.cover || ''),
+                                    description: String(d.description || ''),
+                                    tags: tagValues,
+                                    lastChapter: chapterCount > 0
+                                        ? `ID 直达 · 共 ${chapterCount} 话`
+                                        : 'ID 直达'
+                                }],
+                                maxPage: 1,
+                                __directID: comicId
+                            });
+                        }
+                    }
+                } catch (e) {
+                    // 编号不存在或详情失败时，仍按普通关键词继续搜索。
+                }
+            }
+
             const api = __source.search || {};
             let value;
             if (typeof api.load === 'function') {
@@ -97,7 +163,7 @@ public final class VeneraRuntime: @unchecked Sendable {
                 coverUrl: string(comic["cover"]),
                 intro: string(comic["description"]),
                 kind: tags.joined(separator: " / "),
-                lastChapter: "",
+                lastChapter: string(comic["lastChapter"]),
                 bookUrl: id
             )
         }
@@ -430,7 +496,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.9.2';")
+        context.evaluateScript("globalThis.appVersion = '1.9.3';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 
