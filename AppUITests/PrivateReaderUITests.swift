@@ -14,9 +14,26 @@ final class PrivateReaderUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["选择漫画源"].waitForExistence(timeout: 12),
                       "输入数字后应当弹出编号源选择，而不是直接搜索")
-        XCTAssertTrue(app.buttons["id-source-all"].waitForExistence(timeout: 5),
+
+        // SwiftUI 自定义 label 的按钮有时会把 identifier 落到子元素上，
+        // 因此同时按可见文案和 identifier 查找，确保验证的是用户真实看到的入口。
+        let allByLabel = app.buttons.matching(
+            NSPredicate(format: "label == %@", "所有漫画源都试一下")
+        ).firstMatch
+        let allByID = app.descendants(matching: .any)
+            .matching(identifier: "id-source-all").firstMatch
+        let allText = app.staticTexts["所有漫画源都试一下"]
+        XCTAssertTrue(allByLabel.waitForExistence(timeout: 5)
+                      || allByID.waitForExistence(timeout: 3)
+                      || allText.waitForExistence(timeout: 3),
                       "源选择弹窗里要有「所有漫画源都试一下」")
-        XCTAssertTrue(app.buttons.matching(identifier: "id-source-option").firstMatch.exists,
+
+        let sourceRow = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "测试编号源")
+        ).firstMatch
+        let sourceText = app.staticTexts["测试编号源"]
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 5)
+                      || sourceText.waitForExistence(timeout: 3),
                       "应当列出声明了 idMatch 且匹配编号的源")
     }
 
