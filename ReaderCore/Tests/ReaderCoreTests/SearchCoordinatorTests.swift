@@ -131,6 +131,82 @@ final class SearchCoordinatorTests: XCTestCase {
         XCTAssertTrue(results[0].errorText?.contains("编号直达失败") == true,
                       "错误要说清是编号直达失败，实际：\(results[0].errorText ?? "nil")")
     }
+
+    func testMixedIDModeOnlyForcesSelectedSources() async {
+        let directScript = """
+        class Probe extends ComicSource {
+            name = "Direct"
+            key = "direct"
+            version = "1.0"
+            idMatch = "^(\\\\d+|jm\\\\d+)$"
+            search = {
+                load: async (keyword, options, page) => ({
+                    comics: [{
+                        id: "fallback",
+                        title: keyword,
+                        subTitle: "",
+                        cover: "",
+                        description: "",
+                        tags: []
+                    }],
+                    maxPage: 1
+                })
+            }
+            comic = {
+                loadInfo: async (id) => { throw "详情接口失败"; },
+                loadEp: async (comicId, epId) => ({ images: [] })
+            }
+        }
+        """
+        let normalScript = """
+        class Probe extends ComicSource {
+            name = "Normal"
+            key = "normal"
+            version = "1.0"
+            search = {
+                load: async (keyword, options, page) => ({
+                    comics: [{
+                        id: "keyword-result",
+                        title: keyword,
+                        subTitle: "",
+                        cover: "",
+                        description: "",
+                        tags: []
+                    }],
+                    maxPage: 1
+                })
+            }
+            comic = {
+                loadInfo: async (id) => { throw "详情接口失败"; },
+                loadEp: async (comicId, epId) => ({ images: [] })
+            }
+        }
+        """
+        let direct = SearchTarget.venera(VeneraSource(
+            id: "v-direct", key: "direct", name: "编号源", js: directScript
+        ))
+        let normal = SearchTarget.venera(VeneraSource(
+            id: "v-normal", key: "normal", name: "普通源", js: normalScript
+        ))
+
+        var results: [SourceSearchResult] = []
+        let stream = await makeCoordinator().search(
+            sources: [direct, normal],
+            key: "12345",
+            maxConcurrent: 2,
+            directIDSources: ["v-direct"]
+        )
+        for await result in stream { results.append(result) }
+
+        let directResult = results.first { $0.source.id == "v-direct" }
+        let normalResult = results.first { $0.source.id == "v-normal" }
+        XCTAssertTrue(directResult?.books.isEmpty == true,
+                      "被点名为编号源的源不能回退成关键词结果")
+        XCTAssertTrue(directResult?.errorText?.contains("编号直达失败") == true)
+        XCTAssertEqual(normalResult?.books.count, 1,
+                       "没被点名的源仍应走普通搜索")
+        XCTAssertNil(normalResult?.errorText)
+    }
 }
 
 /// 延迟返回的协议，用来验证总超时。

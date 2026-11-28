@@ -4,8 +4,9 @@ import Foundation
 public enum SourceHealthStatus: Equatable, Sendable {
     /// 只检查了搜索。`sampleCount` 是返回的书籍条数。
     case ok(milliseconds: Int, sampleCount: Int)
-    /// 搜索、详情、目录都走通了。`chapterCount` 是目录里的章节数。
-    case okDeep(milliseconds: Int, sampleCount: Int, chapterCount: Int)
+    /// 搜索、详情、目录都走通了。`checkedSamples` 是真正抽查了几本书，
+    /// `chapterCount` 是这几本样本的目录章节总数。
+    case okDeep(milliseconds: Int, sampleCount: Int, checkedSamples: Int, chapterCount: Int)
     /// 搜索能通，但详情或目录打不开。它不算“明确失败”，不能因此删除源。
     case partial(String)
     /// 首轮和加长重试都没有在时限内返回。超时只代表“这次没测出来”，
@@ -35,15 +36,27 @@ public enum SourceHealthStatus: Equatable, Sendable {
         return false
     }
 
+    /// 这次没测出来，但源不一定是坏的。
+    public var isTimeout: Bool {
+        if case .timeout = self { return true }
+        return false
+    }
+
     /// 列表里显示的短标签。
     public var label: String {
         switch self {
-        case .ok(let ms, let count): return "\(ms)ms · \(count) 条"
-        case .okDeep(let ms, let count, let chapters): return "\(ms)ms · \(count) 条 · \(chapters) 章"
-        case .partial: return "部分可用"
-        case .timeout: return "超时（可重试）"
-        case .failed: return "失败"
-        case .skipped(let reason): return reason
+        case .ok(let ms, let count):
+            return "\(ms)ms · \(count) 条"
+        case .okDeep(let ms, let count, let checked, let chapters):
+            return "\(ms)ms · \(count) 条 · 抽查 \(checked) 本 · \(chapters) 章"
+        case .partial:
+            return "部分可用"
+        case .timeout:
+            return "超时（可重试）"
+        case .failed:
+            return "失败"
+        case .skipped(let reason):
+            return reason
         }
     }
 }
@@ -54,8 +67,10 @@ public enum SourceHealthStatus: Equatable, Sendable {
 /// 会再用更长的超时重试一次。只有明确失败（4xx/5xx、解析错误、脚本报错）
 /// 才算失效，可以删除。这样不会把「站点慢」误判成「源坏了」。
 ///
-/// `deep: true` 会在搜索成功后继续打开第一条结果的详情、拉一次目录：
+/// `deep: true` 会在搜索成功后继续打开前几本书的详情、拉目录：
 /// 搜索能通但详情/目录坏掉的源会得到 `.partial`，不会被当成“正常”。
+/// 每个阶段单独计时，慢站不会因为「搜索 + 详情 + 目录」共享一个总预算
+/// 被误判成超时。
 public struct SourceHealthChecker: Sendable {
     private let client: SourceClient
     private let venera: VeneraRuntime
@@ -69,7 +84,8 @@ public struct SourceHealthChecker: Sendable {
                       keyword: String = "剑",
                       timeout: TimeInterval = 5,
                       retryTimeout: TimeInterval? = nil,
-                      deep: Bool = false) async -> SourceHealthStatus {
+                      deep: Bool = false,
+                      deepSampleLimit: Int = 3) async -> SourceHealthStatus {
         guard source.enabled else { return .skipped("已关闭") }
         guard !source.searchUrl.isEmpty, !source.ruleSearch.bookList.isEmpty else {
             return .skipped("无搜索规则")
@@ -78,11 +94,13 @@ public struct SourceHealthChecker: Sendable {
         if deep {
             let first = await runDeepLegado(source,
                                             keyword: keyword,
-                                            timeout: max(timeout, 20))
+                                            timeout: timeout,
+                                            sampleLimit: deepSampleLimit)
             if case .timeout = first, let retryTimeout {
                 return await runDeepLegado(source,
                                            keyword: keyword,
-                                           timeout: max(retryTimeout, 20))
+                                           timeout: max(retryTimeout, timeout),
+                                           sampleLimit: deepSampleLimit)
             }
             return first
         }
@@ -104,17 +122,20 @@ public struct SourceHealthChecker: Sendable {
                       keyword: String = "海贼",
                       timeout: TimeInterval = 12,
                       retryTimeout: TimeInterval? = nil,
-                      deep: Bool = false) async -> SourceHealthStatus {
+                      deep: Bool = false,
+                      deepSampleLimit: Int = 3) async -> SourceHealthStatus {
         guard source.enabled else { return .skipped("已关闭") }
 
         if deep {
             let first = await runDeepVenera(source,
                                             keyword: keyword,
-                                            timeout: max(timeout, 20))
+                                            timeout: timeout,
+                                            sampleLimit: deepSampleLimit)
             if case .timeout = first, let retryTimeout {
                 return await runDeepVenera(source,
                                            keyword: keyword,
-                                           timeout: max(retryTimeout, 20))
+                                           timeout: max(retryTimeout, timeout),
+                                           sampleLimit: deepSampleLimit)
             }
             return first
         }
@@ -138,31 +159,14 @@ public struct SourceHealthChecker: Sendable {
                            keyword: String,
                            timeout: TimeInterval) async -> SourceHealthStatus {
         let started = Date()
-        let race = await withTaskGroup(of: Race.self) { group in
-            group.addTask {
-                do {
-                    return .success(try await client.search(source: source, key: keyword))
-                } catch {
-                    return Self.isTimeout(error) ? .timeout : .failure(Self.message(error))
-                }
+        do {
+            let books = try await withTimeout(seconds: timeout) {
+                try await client.search(source: source, key: keyword)
             }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0.05) * 1_000_000_000))
-                return .timeout
-            }
-            let first = await group.next() ?? .timeout
-            group.cancelAll()
-            return first
-        }
-
-        switch race {
-        case .success(let books):
             return .ok(milliseconds: Int(Date().timeIntervalSince(started) * 1000),
                        sampleCount: books.count)
-        case .failure(let message):
-            return .failed(message)
-        case .timeout:
-            return .timeout
+        } catch {
+            return Self.isTimeout(error) ? .timeout : .failed(Self.message(error))
         }
     }
 
@@ -170,34 +174,15 @@ public struct SourceHealthChecker: Sendable {
                            keyword: String,
                            timeout: TimeInterval) async -> SourceHealthStatus {
         let started = Date()
-        let race = await withTaskGroup(of: Race.self) { group in
-            group.addTask {
-                do {
-                    // 这里必须和真实搜索用同一个超时，不能内层 30 秒、外层 12 秒互相打架。
-                    return .success(try await venera.search(source: source,
-                                                            keyword: keyword,
-                                                            timeout: timeout))
-                } catch {
-                    return Self.isTimeout(error) ? .timeout : .failure(Self.message(error))
-                }
+        do {
+            // 这里必须和真实搜索用同一个超时，不能内层 30 秒、外层 12 秒互相打架。
+            let books = try await withTimeout(seconds: timeout) {
+                try await venera.search(source: source, keyword: keyword, timeout: timeout)
             }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0.05) * 1_000_000_000))
-                return .timeout
-            }
-            let first = await group.next() ?? .timeout
-            group.cancelAll()
-            return first
-        }
-
-        switch race {
-        case .success(let books):
             return .ok(milliseconds: Int(Date().timeIntervalSince(started) * 1000),
                        sampleCount: books.count)
-        case .failure(let message):
-            return .failed(message)
-        case .timeout:
-            return .timeout
+        } catch {
+            return Self.isTimeout(error) ? .timeout : .failed(Self.message(error))
         }
     }
 
@@ -205,105 +190,109 @@ public struct SourceHealthChecker: Sendable {
 
     private func runDeepLegado(_ source: LegadoSource,
                                keyword: String,
-                               timeout: TimeInterval) async -> SourceHealthStatus {
+                               timeout: TimeInterval,
+                               sampleLimit: Int) async -> SourceHealthStatus {
         let started = Date()
-        let race = await withTaskGroup(of: DeepRace.self) { group in
-            group.addTask {
-                do {
-                    let books = try await client.search(source: source, key: keyword)
+        let stageTimeout = Self.stageTimeout(timeout)
 
-                    guard let first = books.first else {
-                        return .status(.skipped("搜索 0 条，未验证详情"))
-                    }
+        let books: [OnlineBook]
+        do {
+            books = try await withTimeout(seconds: stageTimeout) {
+                try await client.search(source: source, key: keyword)
+            }
+        } catch {
+            return Self.isTimeout(error) ? .timeout : .failed(Self.message(error))
+        }
 
-                    let info: OnlineBook
-                    do {
-                        info = try await client.bookInfo(source: source, book: first)
-                    } catch {
-                        return .status(.partial("搜索正常（\(books.count) 条），详情打不开：\(Self.message(error))"))
-                    }
+        guard !books.isEmpty else {
+            return .skipped("搜索 0 条，未验证详情")
+        }
 
-                    do {
-                        let chapters = try await client.chapters(source: source, book: info)
-                        guard !chapters.isEmpty else {
-                            return .status(.partial("搜索和详情正常，目录为空"))
-                        }
-                        return .status(.okDeep(
-                            milliseconds: Int(Date().timeIntervalSince(started) * 1000),
-                            sampleCount: books.count,
-                            chapterCount: chapters.count
-                        ))
-                    } catch {
-                        return .status(.partial("搜索正常（\(books.count) 条），目录打不开：\(Self.message(error))"))
-                    }
-                } catch {
-                    return .status(Self.isTimeout(error) ? .timeout : .failed(Self.message(error)))
+        let sample = Array(books.prefix(max(1, sampleLimit)))
+        var totalChapters = 0
+
+        for (index, book) in sample.enumerated() {
+            let info: OnlineBook
+            do {
+                info = try await withTimeout(seconds: stageTimeout) {
+                    try await client.bookInfo(source: source, book: book)
                 }
+            } catch {
+                return .partial("搜索正常（\(books.count) 条），第 \(index + 1) 条样本详情打不开：\(Self.message(error))")
             }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0.05) * 1_000_000_000))
-                return .timeout
+
+            let chapters: [OnlineChapter]
+            do {
+                chapters = try await withTimeout(seconds: stageTimeout) {
+                    try await client.chapters(source: source, book: info)
+                }
+            } catch {
+                return .partial("搜索正常（\(books.count) 条），第 \(index + 1) 条样本目录打不开：\(Self.message(error))")
             }
-            let first = await group.next() ?? .timeout
-            group.cancelAll()
-            return first
+            guard !chapters.isEmpty else {
+                return .partial("搜索正常（\(books.count) 条），第 \(index + 1) 条样本目录为空")
+            }
+            totalChapters += chapters.count
         }
 
-        switch race {
-        case .status(let status): return status
-        case .timeout: return .timeout
-        }
+        return .okDeep(milliseconds: Int(Date().timeIntervalSince(started) * 1000),
+                       sampleCount: books.count,
+                       checkedSamples: sample.count,
+                       chapterCount: totalChapters)
     }
 
     private func runDeepVenera(_ source: VeneraSource,
                                keyword: String,
-                               timeout: TimeInterval) async -> SourceHealthStatus {
+                               timeout: TimeInterval,
+                               sampleLimit: Int) async -> SourceHealthStatus {
         let started = Date()
-        let race = await withTaskGroup(of: DeepRace.self) { group in
-            group.addTask {
-                let books: [OnlineBook]
-                do {
-                    books = try await venera.search(source: source,
-                                                    keyword: keyword,
-                                                    timeout: timeout)
-                } catch {
-                    return .status(Self.isTimeout(error) ? .timeout : .failed(Self.message(error)))
-                }
+        let stageTimeout = Self.stageTimeout(timeout)
 
-                guard let first = books.first else {
-                    return .status(.skipped("搜索 0 条，未验证详情"))
-                }
-
-                do {
-                    let detail = try await venera.detail(source: source,
-                                                         comicId: first.bookUrl,
-                                                         timeout: timeout,
-                                                         forceRefresh: true)
-                    guard !detail.chapters.isEmpty else {
-                        return .status(.partial("详情能打开，但目录为空"))
-                    }
-                    return .status(.okDeep(
-                        milliseconds: Int(Date().timeIntervalSince(started) * 1000),
-                        sampleCount: books.count,
-                        chapterCount: detail.chapters.count
-                    ))
-                } catch {
-                    return .status(.partial("搜索正常（\(books.count) 条），详情打不开：\(Self.message(error))"))
-                }
+        let books: [OnlineBook]
+        do {
+            books = try await withTimeout(seconds: stageTimeout) {
+                try await venera.search(source: source, keyword: keyword, timeout: stageTimeout)
             }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0.05) * 1_000_000_000))
-                return .timeout
-            }
-            let first = await group.next() ?? .timeout
-            group.cancelAll()
-            return first
+        } catch {
+            return Self.isTimeout(error) ? .timeout : .failed(Self.message(error))
         }
 
-        switch race {
-        case .status(let status): return status
-        case .timeout: return .timeout
+        guard !books.isEmpty else {
+            return .skipped("搜索 0 条，未验证详情")
         }
+
+        let sample = Array(books.prefix(max(1, sampleLimit)))
+        var totalChapters = 0
+
+        for (index, book) in sample.enumerated() {
+            do {
+                let detail = try await withTimeout(seconds: stageTimeout) {
+                    try await venera.detail(source: source,
+                                            comicId: book.bookUrl,
+                                            timeout: stageTimeout,
+                                            forceRefresh: true)
+                }
+                guard !detail.chapters.isEmpty else {
+                    return .partial("搜索正常（\(books.count) 条），第 \(index + 1) 条样本目录为空")
+                }
+                totalChapters += detail.chapters.count
+            } catch {
+                return .partial("搜索正常（\(books.count) 条），第 \(index + 1) 条样本详情打不开：\(Self.message(error))")
+            }
+        }
+
+        return .okDeep(milliseconds: Int(Date().timeIntervalSince(started) * 1000),
+                       sampleCount: books.count,
+                       checkedSamples: sample.count,
+                       chapterCount: totalChapters)
+    }
+
+    // MARK: - 辅助
+
+    /// 深度模式的每个阶段至少给 10 秒；单源体检传进来的 5 秒只够一次搜索，
+    /// 不该让详情和目录共用同一份预算。
+    private static func stageTimeout(_ timeout: TimeInterval) -> TimeInterval {
+        max(timeout, 10)
     }
 
     private static func message(_ error: Error) -> String {
@@ -318,16 +307,5 @@ public struct SourceHealthChecker: Sendable {
             || text.contains("timeout")
             || text.contains("超时")
             || text.contains("已取消")
-    }
-
-    private enum Race: Sendable {
-        case success([OnlineBook])
-        case failure(String)
-        case timeout
-    }
-
-    private enum DeepRace: Sendable {
-        case status(SourceHealthStatus)
-        case timeout
     }
 }

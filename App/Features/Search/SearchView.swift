@@ -124,6 +124,7 @@ struct SearchView: View {
                           ? "书名、作者或漫画 ID"
                           : "书名或作者",
                           text: $model.query)
+                    .accessibilityIdentifier("search.field")
                     .font(.system(size: 15))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -158,6 +159,7 @@ struct SearchView: View {
                 keyboardFocus = false
                 model.search(env: env)
             }
+            .accessibilityIdentifier("search.submit")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(model.query.trimmingCharacters(in: .whitespaces).isEmpty
                              ? Palette.ink3 : Palette.accent)
@@ -185,6 +187,7 @@ struct SearchView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier(kind == .comic ? "search.kind.comic" : "search.kind.novel")
                 }
             }
             .padding(3)

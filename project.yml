@@ -40,12 +40,29 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
 
+  PrivateReaderUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: AppUITests
+    dependencies:
+      - target: PrivateReader
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dmj654.privatereader.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PrivateReader
+
 schemes:
   PrivateReader:
     build:
       targets:
         PrivateReader: all
+        PrivateReaderUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
+      targets:
+        - PrivateReaderUITests

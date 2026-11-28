@@ -91,6 +91,7 @@ struct IDSourcePickerSheet: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("id-source-option")
                     }
                 }
                 .padding(.horizontal, 18)
@@ -113,6 +114,7 @@ struct IDSourcePickerSheet: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("id-source-all")
             .padding(.horizontal, 22)
             .padding(.top, 8)
 
@@ -123,6 +125,7 @@ struct IDSourcePickerSheet: View {
                 .padding(.bottom, 20)
         }
         .background(Palette.bg)
+        .accessibilityIdentifier("id-source-picker")
         .presentationDetents([.height(sheetHeight)])
         .presentationDragIndicator(.visible)
     }

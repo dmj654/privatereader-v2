@@ -62,6 +62,45 @@ final class AppEnvironment: ObservableObject {
         self.importLog = ImportLog(directory: paths.root)
         self.startupMessage = message
 
+        #if DEBUG
+        // 只给 UI 自动化用的固定漫画源；Release 包里不会执行。
+        if ProcessInfo.processInfo.arguments.contains("-UITestSeedComicSource") {
+            let noIDMatch = ProcessInfo.processInfo.arguments.contains("-UITestNoIDMatch")
+            let idRule = noIDMatch ? "" : "idMatch = \"^(\\\\d+|jm\\\\d+)$\""
+            let script = """
+            class UITestComic extends ComicSource {
+                name = "测试编号源"
+                key = "uitest"
+                version = "1.0"
+                \(idRule)
+                search = { load: async () => ({ comics: [], maxPage: 1 }) }
+                comic = {
+                    loadInfo: async (id) => ({
+                        title: id,
+                        cover: "",
+                        description: "",
+                        tags: {},
+                        chapters: new Map([["e1", "第一话"]])
+                    }),
+                    loadEp: async () => ({ images: [] })
+                }
+            }
+            """
+            let source = VeneraSource(id: "venera:uitest",
+                                      key: "uitest",
+                                      name: "测试编号源",
+                                      version: "1.0",
+                                      js: script)
+            let record = BookSource(id: source.id,
+                                    name: source.name,
+                                    type: 2,
+                                    enabled: true,
+                                    rawJson: source.envelopeJSON(),
+                                    engine: "venera")
+            try? self.sources.upsert(record)
+        }
+        #endif
+
         // 每次启动写一行，方便区分「这次是新装的」还是「上次的日志」
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         self.importLog.append("--- 启动 v\(version)，沙盒 \(paths.root.path) ---")

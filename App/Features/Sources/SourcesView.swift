@@ -25,10 +25,7 @@ struct SourcesView: View {
     @State private var selectionMode = false
     @State private var selectedIDs: Set<String> = []
     @State private var confirmDeleteSelected = false
-    /// 上次检测写进数据库的结论：进页面后仍能看到失败/超时/部分可用，而不是只剩本次内存状态。
-    @State private var persistedFailedIDs: Set<String> = []
-    @State private var persistedTimeoutIDs: Set<String> = []
-    @State private var persistedPartialMessages: [String: String] = [:]
+    @State private var confirmDeepCheckAll = false
 
     private var kindSources: [BookSource] {
         sources.filter { kindFilter.matches($0.type) }
@@ -65,14 +62,13 @@ struct SourcesView: View {
 
     private var summaryDetail: String {
         var parts = ["启用 \(enabledCount) 条", "共 \(kindSources.count) 条"]
-        let failed = kindSources.filter { $0.enabled && persistedFailedIDs.contains($0.id) }.count
-        let timedOut = kindSources.filter { $0.enabled && persistedTimeoutIDs.contains($0.id) }.count
-        let partial = kindSources.filter {
-            $0.enabled && (health[$0.id]?.isPartial == true
-                || persistedPartialMessages[$0.id] != nil)
-        }.count
-        if failed > 0 { parts.append("上次失败 \(failed) 条") }
-        if timedOut > 0 { parts.append("上次超时 \(timedOut) 条") }
+        let ok = kindSources.filter { $0.enabled && health[$0.id]?.isHealthy == true }.count
+        let failed = kindSources.filter { $0.enabled && health[$0.id]?.isDefiniteFailure == true }.count
+        let timedOut = kindSources.filter { $0.enabled && health[$0.id]?.isTimeout == true }.count
+        let partial = kindSources.filter { $0.enabled && health[$0.id]?.isPartial == true }.count
+        if ok > 0 { parts.append("正常 \(ok) 条") }
+        if failed > 0 { parts.append("失败 \(failed) 条") }
+        if timedOut > 0 { parts.append("超时 \(timedOut) 条") }
         if partial > 0 { parts.append("部分可用 \(partial) 条") }
         return parts.joined(separator: " · ")
     }
@@ -96,11 +92,9 @@ struct SourcesView: View {
             case .partial:
                 guard source.enabled else { return false }
                 return health[source.id]?.isPartial == true
-                    || persistedPartialMessages[source.id] != nil
             case .failed:
                 guard source.enabled else { return false }
-                return persistedFailedIDs.contains(source.id)
-                    || health[source.id]?.isDefiniteFailure == true
+                return health[source.id]?.isDefiniteFailure == true
             }
         }
     }
@@ -171,6 +165,12 @@ struct SourcesView: View {
             Button("删除选中项", role: .destructive) { deleteSelected() }
         } message: {
             Text("只删当前分类里勾选的源，书架里的书不受影响。")
+        }
+        .confirmationDialog("深度检测全部\(kindFilter.title)？", isPresented: $confirmDeepCheckAll, titleVisibility: .visible) {
+            Button("开始深度检测") { checkAllDeep() }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("会对当前分类里启用的 \(enabledCount) 条源逐条检查搜索、前 3 本书的详情和目录。源多时可能要几十分钟，检测中可从菜单点「停止检测」。")
         }
         .onAppear(perform: reload)
     }
@@ -294,7 +294,13 @@ struct SourcesView: View {
             }
             Spacer(minLength: 0)
             Menu {
-                Button("测一下启用的\(kindFilter.title)") { checkAll() }
+                if isCheckingAll {
+                    Button("停止检测") { checkAll() }
+                } else {
+                    Button("测一下启用的\(kindFilter.title)") { checkAll() }
+                    Button("深度检测全部\(kindFilter.title)（慢）") { confirmDeepCheckAll = true }
+                        .disabled(enabledCount == 0)
+                }
                 Button("批量管理（勾选后测试 / 开关 / 删除）") { enterSelection() }
                 Button("禁用全部失败的\(kindFilter.title)") { disableFailed() }
                     .disabled(failedSources.isEmpty)
@@ -321,7 +327,7 @@ struct SourcesView: View {
     }
 
     private var maintenanceHint: some View {
-        Text("「测一下全部」只测试当前分类里启用的源：普通源首轮 5 秒，Venera 12 秒；超时会自动用普通 20 秒、Venera 45 秒重试一次。仍超时只记为超时，不算失效、不会自动删除。单源「测一下」和「测所选」会继续打开第一条结果的详情和目录：搜索正常但详情/目录坏掉的源会标成「部分可用」，也不会自动删除。")
+        Text("「测一下全部」只做搜索，速度较快。「深度检测全部（慢）」会对每本源打开前 3 本书的详情和目录，源多时要几十分钟，可随时停止。单源「测一下」和「测所选」也会抽查前 3 本：搜索正常但详情/目录坏掉的源会标成「部分可用」，不会自动删除。")
             .font(Typo.micro)
             .foregroundStyle(Palette.ink3)
             .lineSpacing(2)
@@ -388,8 +394,7 @@ struct SourcesView: View {
 
                 Text(statusText(status, id: source.id, enabled: source.enabled, checking: isChecking))
                     .font(Typo.micro)
-                    .foregroundStyle(status == nil && persistedPartialMessages[source.id] == nil
-                                     ? Palette.ink3 : Palette.ink2)
+                    .foregroundStyle(status == nil ? Palette.ink3 : Palette.ink2)
                     .lineLimit(1)
 
                 Spacer(minLength: 8)
@@ -548,22 +553,13 @@ struct SourcesView: View {
         if checking { return "正在请求源站…" }
         guard let status else {
             guard enabled else { return "已关闭" }
-            if persistedFailedIDs.contains(id) {
-                return "上次检测明确失败，建议重测或关闭"
-            }
-            if persistedTimeoutIDs.contains(id) {
-                return "上次检测超时，建议稍后重测"
-            }
-            if let message = persistedPartialMessages[id] {
-                return "上次检测部分可用 · \(message)（可重测）"
-            }
             return "未检测"
         }
         switch status {
         case .ok(let ms, let count):
             return "正常 · \(ms)ms · \(count) 条结果"
-        case .okDeep(let ms, let count, let chapters):
-            return "正常 · \(ms)ms · \(count) 条结果 · 详情和目录通过 · \(chapters) 章"
+        case .okDeep(let ms, let count, let checked, let chapters):
+            return "正常 · \(ms)ms · \(count) 条结果 · 抽查 \(checked) 本详情/目录通过 · 共 \(chapters) 章"
         case .partial(let message):
             return "部分可用 · \(message)"
         case .timeout:
@@ -577,12 +573,7 @@ struct SourcesView: View {
 
     private func statusColor(_ status: SourceHealthStatus?, id: String, enabled: Bool) -> Color {
         guard enabled else { return Palette.ink3.opacity(0.5) }
-        guard let status else {
-            if persistedFailedIDs.contains(id) { return Palette.danger }
-            if persistedTimeoutIDs.contains(id) { return Color(hex: 0xC08A3E) }
-            if persistedPartialMessages[id] != nil { return Color(hex: 0xC08A3E) }
-            return Palette.ink3.opacity(0.6)
-        }
+        guard let status else { return Palette.ink3.opacity(0.6) }
         switch status {
         case .ok, .okDeep: return Color(hex: 0x4E8A5F)
         case .partial: return Color(hex: 0xC08A3E)
@@ -601,13 +592,15 @@ struct SourcesView: View {
                 if lhs.enabled != rhs.enabled { return lhs.enabled && !rhs.enabled }
                 return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
             }
-            persistedFailedIDs = Set(((try? env.sources.invalidSources()) ?? []).map(\.id))
-            persistedTimeoutIDs = Set(((try? env.sources.timeoutSources()) ?? []).map(\.id))
-            persistedPartialMessages = Dictionary(uniqueKeysWithValues: all.compactMap { source in
-                guard let result = source.lastCheckResult,
-                      result.hasPrefix("partial: ") else { return nil }
-                return (source.id, String(result.dropFirst("partial: ".count)))
-            })
+
+            // 上次体检的结论都从数据库恢复；本次内存里的新结果优先。
+            let liveIDs = Set(all.map(\.id))
+            health = health.filter { liveIDs.contains($0.key) }
+            for source in all where health[source.id] == nil {
+                if let snapshot = SourceHealthSnapshot(lastCheckResult: source.lastCheckResult) {
+                    health[source.id] = snapshot.status
+                }
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -731,6 +724,12 @@ struct SourcesView: View {
         startBatch(kindSources.filter(\.enabled), deep: false)
     }
 
+    /// 全部深度检测走同一个批量任务，保留进度和“再点一次停止”。
+    /// 和快速检测分开，避免用户误把几十分钟的深检当成普通体检。
+    private func checkAllDeep() {
+        startBatch(kindSources.filter(\.enabled), deep: true)
+    }
+
     private func checkSelected() {
         let targets = kindSources.filter { selectedIDs.contains($0.id) }
         startBatch(targets, deep: true)
@@ -838,8 +837,7 @@ struct SourcesView: View {
     private var failedSources: [BookSource] {
         kindSources.filter { source in
             guard source.enabled else { return false }
-            return persistedFailedIDs.contains(source.id)
-                || health[source.id]?.isDefiniteFailure == true
+            return health[source.id]?.isDefiniteFailure == true
         }
     }
 
@@ -863,30 +861,15 @@ struct SourcesView: View {
         let text: String
         switch status {
         case .ok(let ms, let count):
-            text = "ok \(ms)ms \(count)"
-            persistedFailedIDs.remove(source.id)
-            persistedTimeoutIDs.remove(source.id)
-            persistedPartialMessages[source.id] = nil
-        case .okDeep(let ms, let count, let chapters):
-            text = "ok deep \(ms)ms \(count) \(chapters)"
-            persistedFailedIDs.remove(source.id)
-            persistedTimeoutIDs.remove(source.id)
-            persistedPartialMessages[source.id] = nil
+            text = "ok \(ms) \(count)"
+        case .okDeep(let ms, let count, let checked, let chapters):
+            text = "okDeep \(ms) \(count) \(checked) \(chapters)"
         case .partial(let message):
             text = "partial: \(message)"
-            persistedFailedIDs.remove(source.id)
-            persistedTimeoutIDs.remove(source.id)
-            persistedPartialMessages[source.id] = message
         case .timeout:
             text = "timeout"
-            persistedFailedIDs.remove(source.id)
-            persistedTimeoutIDs.insert(source.id)
-            persistedPartialMessages[source.id] = nil
         case .failed(let message):
             text = "failed: \(message)"
-            persistedFailedIDs.insert(source.id)
-            persistedTimeoutIDs.remove(source.id)
-            persistedPartialMessages[source.id] = nil
         case .skipped(let reason):
             text = "skipped: \(reason)"
         }

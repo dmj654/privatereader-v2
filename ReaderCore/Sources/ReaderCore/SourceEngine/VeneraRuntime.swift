@@ -509,15 +509,41 @@ public final class VeneraRuntime: @unchecked Sendable {
          "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"]
     }
 
+    /// 静态提取读不到时，用运行时把源的构造逻辑跑一遍，读取真正算出来的
+    /// `idMatch`。不执行 `init()`，避免为了识别编号去发登录/网络请求。
+    public func idMatchPattern(source: VeneraSource, timeout: TimeInterval = 3) async -> String? {
+        do {
+            let value = try await perform(
+                source: source,
+                timeout: timeout,
+                waitForInit: false,
+                call: """
+                typeof __source.idMatch === 'string'
+                    ? __source.idMatch
+                    : (__source.idMatch instanceof RegExp ? __source.idMatch.source : '')
+                """
+            )
+            guard let text = value as? String else { return nil }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: - 执行
 
     private func perform(source: VeneraSource,
                          timeout: TimeInterval,
+                         waitForInit: Bool = true,
                          call: String) async throws -> Any? {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
-                    let value = try self.execute(source: source, timeout: timeout, call: call)
+                    let value = try self.execute(source: source,
+                                                 timeout: timeout,
+                                                 waitForInit: waitForInit,
+                                                 call: call)
                     continuation.resume(returning: value)
                 } catch {
                     continuation.resume(throwing: error)
@@ -526,7 +552,10 @@ public final class VeneraRuntime: @unchecked Sendable {
         }
     }
 
-    private func execute(source: VeneraSource, timeout: TimeInterval, call: String) throws -> Any? {
+    private func execute(source: VeneraSource,
+                         timeout: TimeInterval,
+                         waitForInit: Bool = true,
+                         call: String) throws -> Any? {
         guard !Self.initScript.isEmpty else {
             throw VeneraEngineError.runtime("缺少 venera_init.js 资源")
         }
@@ -541,7 +570,7 @@ public final class VeneraRuntime: @unchecked Sendable {
             _ = exception?.toString()
         }
 
-        context.evaluateScript("globalThis.appVersion = '1.9.5';")
+        context.evaluateScript("globalThis.appVersion = '1.9.6';")
         context.evaluateScript(Self.initScript)
         context.evaluateScript(Self.bridgePrelude)
 
@@ -560,22 +589,24 @@ public final class VeneraRuntime: @unchecked Sendable {
 
         // 少数源在 init 里登录/取 token；有 init 才等，等它真正结束（最多 2 秒），
         // 没有 init 的源不再白等 2 秒。这是发现页首屏慢的主要来源之一。
-        context.evaluateScript("""
-        globalThis.__initError = undefined;
-        globalThis.__initDone = false;
-        (async () => {
-            try {
-                if (__source.init) {
-                    const p = __source.init();
-                    if (p && typeof p.then === 'function') { await p; }
+        if waitForInit {
+            context.evaluateScript("""
+            globalThis.__initError = undefined;
+            globalThis.__initDone = false;
+            (async () => {
+                try {
+                    if (__source.init) {
+                        const p = __source.init();
+                        if (p && typeof p.then === 'function') { await p; }
+                    }
+                } catch (e) {
+                    globalThis.__initError = '' + e;
                 }
-            } catch (e) {
-                globalThis.__initError = '' + e;
-            }
-            globalThis.__initDone = true;
-        })();
-        """)
-        pump(context, until: Date().addingTimeInterval(2.0), doneKey: "__initDone")
+                globalThis.__initDone = true;
+            })();
+            """)
+            pump(context, until: Date().addingTimeInterval(2.0), doneKey: "__initDone")
+        }
 
         let deadline = Date().addingTimeInterval(timeout)
         context.evaluateScript("""

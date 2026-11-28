@@ -69,6 +69,7 @@ struct GlassTabBar: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
+                .accessibilityIdentifier("tab.\(tab.rawValue)")
             }
         }
         .padding(.top, 9)

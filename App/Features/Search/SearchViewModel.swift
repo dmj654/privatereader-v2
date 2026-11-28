@@ -68,10 +68,13 @@ final class SearchViewModel: ObservableObject {
     private var coordinator: SearchCoordinator?
     private var searchedKey = ""
     private var searchedDirectID = false
+    private var searchedDirectIDs: Set<String> = []
     private var failedSources: [SearchTarget] = []
     private var failureMessages: [String] = []
     /// 数字编号弹窗出现时保存当时启用的全部漫画源，供“所有源都试一下”使用。
     private var idAllSources: [SearchTarget] = []
+    /// 这些源声明了 idMatch 且当前编号匹配；“所有源都试一下”时它们必须直达。
+    private var idDirectSourceIDs: Set<String> = []
     private static let historyKey = "search.history"
 
     /// 每个分类各自留一份结果。来回切「小说/漫画」不该重新搜、也不该白屏。
@@ -157,6 +160,7 @@ final class SearchViewModel: ObservableObject {
         idNoMatch = false
         idNoMatchReason = ""
         idAllSources = []
+        idDirectSourceIDs = []
         failureMessages = []
         // 新关键词先清空旧结果，数字编号弹窗取消后也不会留下上一本书。
         books = []
@@ -201,22 +205,30 @@ final class SearchViewModel: ObservableObject {
             // 输入纯数字 / jm+数字时，先问“搜哪个源”。只有源脚本里声明了
             // idMatch 且当前输入能匹配这个正则的源，才会出现在弹窗里。
             if wantedComic && self.looksLikeComicID(key) {
-                let idSourceCount = sources.reduce(0) { count, target in
-                    guard let source = target.veneraSource,
-                          VeneraIDMatch.pattern(from: source) != nil else { return count }
-                    return count + 1
+                var resolved: [(target: SearchTarget, pattern: String)] = []
+                for target in sources {
+                    guard let source = target.veneraSource else { continue }
+                    if let pattern = VeneraIDMatch.pattern(from: source) {
+                        resolved.append((target, pattern))
+                    } else if source.js.contains("idMatch"),
+                              let pattern = await env.veneraRuntime.idMatchPattern(source: source) {
+                        // 静态提取读不到的动态写法，用运行时构造后的值兜底。
+                        resolved.append((target, pattern))
+                    }
                 }
-                let candidates = sources.compactMap { target -> SearchTarget? in
-                    guard let source = target.veneraSource,
-                          VeneraIDMatch.id(from: key, source: source) != nil else {
+
+                let idSourceCount = resolved.count
+                let candidates = resolved.compactMap { entry -> SearchTarget? in
+                    guard VeneraIDMatch.id(from: key, pattern: entry.pattern) != nil else {
                         return nil
                     }
-                    return target
+                    return entry.target
                 }.sorted {
                     $0.name.localizedStandardCompare($1.name) == .orderedAscending
                 }
 
                 self.idAllSources = sources
+                self.idDirectSourceIDs = Set(candidates.map(\.id))
                 if !candidates.isEmpty {
                     self.isSearching = false
                     self.idPromptQuery = key
@@ -249,15 +261,17 @@ final class SearchViewModel: ObservableObject {
     }
 
     /// 用户不想选单个源，或没有源能匹配编号时：让当时启用的全部漫画源
-    /// 都按普通关键词搜一遍（其中声明了 idMatch 的源仍会尝试编号直达）。
+    /// 都跑一遍。声明了 idMatch 且编号匹配的源走编号直达，其余源走普通搜索。
     func searchAllUsingID(env: AppEnvironment) {
         guard let key = idPromptQuery, !idAllSources.isEmpty else { return }
         let sources = idAllSources
+        let directIDs = idDirectSourceIDs
         clearIDPrompt()
         task?.cancel()
         task = Task { [weak self] in
             guard let self else { return }
-            await self.beginSearch(env: env, sources: sources, key: key, directID: false)
+            await self.beginSearch(env: env, sources: sources, key: key,
+                                   directID: false, directIDs: directIDs)
         }
     }
 
@@ -275,6 +289,7 @@ final class SearchViewModel: ObservableObject {
         idNoMatch = false
         idNoMatchReason = ""
         idAllSources = []
+        idDirectSourceIDs = []
     }
 
     private func looksLikeComicID(_ key: String) -> Bool {
@@ -285,11 +300,13 @@ final class SearchViewModel: ObservableObject {
     private func beginSearch(env: AppEnvironment,
                              sources: [SearchTarget],
                              key: String,
-                             directID: Bool = false) async {
+                             directID: Bool = false,
+                             directIDs: Set<String> = []) async {
         guard !Task.isCancelled else { return }
 
         searchedKey = key
         searchedDirectID = directID
+        searchedDirectIDs = directIDs
         remember(key)
         isSearching = true
         hasSearched = true
@@ -308,7 +325,8 @@ final class SearchViewModel: ObservableObject {
 
         for await result in await coordinator.search(sources: sources,
                                                      key: key,
-                                                     directID: directID) {
+                                                     directID: directID,
+                                                     directIDSources: directIDs) {
             if Task.isCancelled { return }
             apply(result)
         }
@@ -378,12 +396,19 @@ final class SearchViewModel: ObservableObject {
             guard let self else { return }
             for await result in await coordinator.search(sources: retry,
                                                          key: self.searchedKey,
-                                                         directID: self.searchedDirectID) {
+                                                         directID: self.searchedDirectID,
+                                                         directIDSources: self.searchedDirectIDs) {
                 self.apply(result)
             }
             self.isSearching = false
-            if self.books.isEmpty, self.failedCount > 0, let first = self.failureMessages.first {
-                self.errorMessage = first
+            if self.books.isEmpty, self.failedCount > 0 {
+                if retry.count == 1, let first = self.failureMessages.first {
+                    self.errorMessage = first
+                } else {
+                    let details = self.failureMessages.prefix(3).joined(separator: "；")
+                    let more = self.failureMessages.count > 3 ? "……" : ""
+                    self.errorMessage = "\(self.failedCount) 个源重试后仍失败：\(details)\(more)"
+                }
             }
             self.saveCache()
         }

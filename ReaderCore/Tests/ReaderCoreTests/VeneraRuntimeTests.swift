@@ -283,4 +283,50 @@ final class VeneraRuntimeTests: XCTestCase {
         XCTAssertEqual(VeneraIDMatch.pattern(from: minifiedSource), #"^(\d+|jm\d+)$"#)
         XCTAssertEqual(VeneraIDMatch.id(from: "456", source: minifiedSource), "456")
     }
+
+    func testVeneraIDMatchSupportsReferencedAndConstructedPatterns() {
+        let referenced = """
+        const ID_PATTERN = "^(\\\\d+|jm\\\\d+)$";
+        class Probe extends ComicSource {
+            idMatch = ID_PATTERN
+        }
+        """
+        XCTAssertEqual(VeneraIDMatch.pattern(from: source(referenced)), #"^(\d+|jm\d+)$"#)
+
+        let constructed = """
+        class Probe extends ComicSource {
+            static idMatch = new RegExp("^(\\\\d+)$", "i")
+        }
+        """
+        XCTAssertEqual(VeneraIDMatch.pattern(from: source(constructed)), #"^(\d+)$"#)
+
+        let template = """
+        class Probe extends ComicSource {
+            idMatch = `^(\\\\d+|jm\\\\d+)$`
+        }
+        """
+        XCTAssertEqual(VeneraIDMatch.pattern(from: source(template)), #"^(\d+|jm\d+)$"#)
+    }
+
+    func testRuntimeResolvesDynamicIDMatch() async {
+        let script = """
+        function makePattern() {
+            return "^(\\\\d+|jm\\\\d+)$";
+        }
+        class Probe extends ComicSource {
+            name = "Probe"
+            key = "probe"
+            version = "1.0"
+            idMatch = makePattern()
+            search = { load: async () => ({ comics: [], maxPage: 1 }) }
+            comic = { loadInfo: async (id) => ({ title: id }), loadEp: async () => ({ images: [] }) }
+        }
+        """
+        let src = source(script)
+        XCTAssertNil(VeneraIDMatch.pattern(from: src), "静态提取读不出函数调用")
+        let runtime = VeneraRuntime()
+        let pattern = await runtime.idMatchPattern(source: src)
+        XCTAssertEqual(pattern, #"^(\d+|jm\d+)$"#)
+        XCTAssertEqual(VeneraIDMatch.id(from: "jm123", pattern: pattern ?? ""), "jm123")
+    }
 }

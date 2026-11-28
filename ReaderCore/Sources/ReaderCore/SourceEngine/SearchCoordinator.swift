@@ -49,10 +49,14 @@ public actor SearchCoordinator {
 
     /// - Parameter maxConcurrent: 同时打几个源。
     ///   两千多个源一次性全发出去，iOS 网络栈会大量返回“似乎已断开互联网”。
+    /// - Parameter directID: 所有源都只允许编号直达（用户只选了一个源时用）。
+    /// - Parameter directIDSources: 只让这些源走编号直达，其余源照普通搜索。
+    ///   “所有源都试一下”用它：声明了 idMatch 的源必须明确直达，不能偷偷回退。
     public func search(sources: [SearchTarget],
                        key: String,
                        maxConcurrent: Int = 6,
-                       directID: Bool = false) -> AsyncStream<SourceSearchResult> {
+                       directID: Bool = false,
+                       directIDSources: Set<String> = []) -> AsyncStream<SourceSearchResult> {
         let client = self.client
         let venera = self.venera
         let timeout = perSourceTimeout
@@ -70,7 +74,8 @@ public actor SearchCoordinator {
                         group.addTask {
                             await Self.run(source: source, key: key,
                                            client: client, venera: venera,
-                                           timeout: timeout, directID: directID)
+                                           timeout: timeout, directID: directID,
+                                           directIDSources: directIDSources)
                         }
                     }
 
@@ -80,7 +85,8 @@ public actor SearchCoordinator {
                             group.addTask {
                                 await Self.run(source: source, key: key,
                                                client: client, venera: venera,
-                                               timeout: timeout, directID: directID)
+                                               timeout: timeout, directID: directID,
+                                               directIDSources: directIDSources)
                             }
                         }
                     }
@@ -103,7 +109,8 @@ public actor SearchCoordinator {
                             client: SourceClient,
                             venera: VeneraRuntime,
                             timeout: TimeInterval,
-                            directID: Bool = false) async -> SourceSearchResult {
+                            directID: Bool = false,
+                            directIDSources: Set<String> = []) async -> SourceSearchResult {
         let started = Date()
         guard source.hasSearchEndpoint else {
             return SourceSearchResult(
@@ -113,7 +120,8 @@ public actor SearchCoordinator {
                 elapsed: 0
             )
         }
-        if directID, source.veneraSource == nil {
+        let forceDirectID = directID || directIDSources.contains(source.id)
+        if forceDirectID, source.veneraSource == nil {
             return SourceSearchResult(
                 source: source,
                 books: [],
@@ -131,7 +139,7 @@ public actor SearchCoordinator {
             case .venera(let script):
                 // Venera 源要下载脚本、建 JSContext、跑异步链，15 秒对慢站不够。
                 books = try await withTimeout(seconds: max(timeout, 30)) {
-                    if directID {
+                    if forceDirectID {
                         return try await venera.searchByID(source: script,
                                                            keyword: key,
                                                            timeout: max(timeout, 30))

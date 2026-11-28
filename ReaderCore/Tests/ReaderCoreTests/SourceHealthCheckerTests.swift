@@ -94,18 +94,20 @@ final class SourceHealthCheckerTests: XCTestCase {
     func testDeepCheckVerifiesDetailAndToc() async {
         StaticURLProtocol.routes = [
             "/search": (200, Data(Self.searchHTML.utf8), "text/html; charset=utf-8"),
-            "/b/1": (200, Data(Self.detailHTML.utf8), "text/html; charset=utf-8")
+            "/b/1": (200, Data(Self.detailHTML.utf8), "text/html; charset=utf-8"),
+            "/b/2": (200, Data(Self.detailHTML.utf8), "text/html; charset=utf-8")
         ]
         let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
 
         let status = await checker.check(makeDeepSource(), timeout: 2, deep: true)
 
-        guard case .okDeep(let ms, let count, let chapters) = status else {
+        guard case .okDeep(let ms, let count, let checked, let chapters) = status else {
             return XCTFail("深度检测应当通过搜索、详情、目录，实际 \(status)")
         }
         XCTAssertGreaterThanOrEqual(ms, 0)
         XCTAssertEqual(count, 2)
-        XCTAssertEqual(chapters, 2)
+        XCTAssertEqual(checked, 2, "默认应抽查前三条搜索结果；这里只有两条")
+        XCTAssertEqual(chapters, 4, "两本样本的目录章节数都要累计")
         XCTAssertTrue(status.isHealthy)
     }
 
@@ -141,6 +143,42 @@ final class SourceHealthCheckerTests: XCTestCase {
         XCTAssertTrue(message.contains("目录"), "错误要指出是目录阶段：\(message)")
     }
 
+    func testDeepCheckFailsWhenASecondSampleIsBroken() async {
+        StaticURLProtocol.routes = [
+            "/search": (200, Data(Self.searchHTML.utf8), "text/html; charset=utf-8"),
+            "/b/1": (200, Data(Self.detailHTML.utf8), "text/html; charset=utf-8")
+            // /b/2 不配置 → 404
+        ]
+        let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
+
+        let status = await checker.check(makeDeepSource(), timeout: 2, deep: true)
+
+        guard case .partial(let message) = status else {
+            return XCTFail("第二本样本详情失败也应标为部分可用，实际 \(status)")
+        }
+        XCTAssertTrue(message.contains("第 2 条"), "错误要指出是哪一条样本：\(message)")
+        XCTAssertFalse(status.isDefiniteFailure)
+    }
+
+    func testDeepCheckRespectsSampleLimit() async {
+        StaticURLProtocol.routes = [
+            "/search": (200, Data(Self.searchHTML.utf8), "text/html; charset=utf-8"),
+            "/b/1": (200, Data(Self.detailHTML.utf8), "text/html; charset=utf-8")
+            // /b/2 不配置，但只抽查第一本时不应被它拖成 partial
+        ]
+        let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
+
+        let status = await checker.check(makeDeepSource(), timeout: 2, deep: true, deepSampleLimit: 1)
+
+        guard case .okDeep(let ms, let count, let checked, let chapters) = status else {
+            return XCTFail("只抽查一本时应当正常，实际 \(status)")
+        }
+        XCTAssertGreaterThanOrEqual(ms, 0)
+        XCTAssertEqual(count, 2)
+        XCTAssertEqual(checked, 1)
+        XCTAssertEqual(chapters, 2)
+    }
+
     func testDeepVeneraCheckVerifiesDetailAndToc() async {
         let script = makeVeneraDeepScript(loadInfoThrows: false)
         let checker = SourceHealthChecker(client: makeClient(StaticURLProtocol.self))
@@ -148,11 +186,12 @@ final class SourceHealthCheckerTests: XCTestCase {
 
         let status = await checker.check(source, keyword: "斗破", timeout: 3, deep: true)
 
-        guard case .okDeep(let ms, let count, let chapters) = status else {
+        guard case .okDeep(let ms, let count, let checked, let chapters) = status else {
             return XCTFail("Venera 深度检测应当通过，实际 \(status)")
         }
         XCTAssertGreaterThanOrEqual(ms, 0)
         XCTAssertEqual(count, 1)
+        XCTAssertEqual(checked, 1)
         XCTAssertEqual(chapters, 2)
     }
 
@@ -279,8 +318,9 @@ final class SourceHealthCheckerTests: XCTestCase {
 
     func testLabelIsShortEnoughForList() {
         XCTAssertEqual(SourceHealthStatus.ok(milliseconds: 128, sampleCount: 3).label, "128ms · 3 条")
-        XCTAssertEqual(SourceHealthStatus.okDeep(milliseconds: 128, sampleCount: 3, chapterCount: 8).label,
-                       "128ms · 3 条 · 8 章")
+        XCTAssertEqual(SourceHealthStatus.okDeep(milliseconds: 128, sampleCount: 3,
+                                                  checkedSamples: 2, chapterCount: 8).label,
+                       "128ms · 3 条 · 抽查 2 本 · 8 章")
         XCTAssertEqual(SourceHealthStatus.partial("目录为空").label, "部分可用")
         XCTAssertEqual(SourceHealthStatus.timeout.label, "超时（可重试）")
         XCTAssertEqual(SourceHealthStatus.failed("x").label, "失败")

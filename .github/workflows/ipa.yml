@@ -14,7 +14,7 @@ jobs:
   unsigned-ipa:
     name: 产出未签名 IPA
     runs-on: macos-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +35,18 @@ jobs:
 
       - name: 生成工程
         run: xcodegen generate
+
+      - name: iOS 模拟器 UI 测试
+        run: |
+          set -o pipefail
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; data=json.load(sys.stdin)['devices']; devices=[d for runtime in data.values() for d in runtime]; print(next(d['udid'] for d in devices if d.get('isAvailable') and d['name'].startswith('iPhone')))")
+          echo "使用模拟器 $UDID"
+          xcodebuild test \
+            -project PrivateReader.xcodeproj \
+            -scheme PrivateReader \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath build-ui \
+            -only-testing:PrivateReaderUITests
 
       - name: 编译 arm64 真机包（不签名）
         run: |
