@@ -25,9 +25,10 @@ struct SourcesView: View {
     @State private var selectionMode = false
     @State private var selectedIDs: Set<String> = []
     @State private var confirmDeleteSelected = false
-    /// 上次检测写进数据库的结论：进页面后仍能看到失败/超时，而不是只剩本次内存状态。
+    /// 上次检测写进数据库的结论：进页面后仍能看到失败/超时/部分可用，而不是只剩本次内存状态。
     @State private var persistedFailedIDs: Set<String> = []
     @State private var persistedTimeoutIDs: Set<String> = []
+    @State private var persistedPartialMessages: [String: String] = [:]
 
     private var kindSources: [BookSource] {
         sources.filter { kindFilter.matches($0.type) }
@@ -66,7 +67,10 @@ struct SourcesView: View {
         var parts = ["启用 \(enabledCount) 条", "共 \(kindSources.count) 条"]
         let failed = kindSources.filter { $0.enabled && persistedFailedIDs.contains($0.id) }.count
         let timedOut = kindSources.filter { $0.enabled && persistedTimeoutIDs.contains($0.id) }.count
-        let partial = kindSources.filter { $0.enabled && health[$0.id]?.isPartial == true }.count
+        let partial = kindSources.filter {
+            $0.enabled && (health[$0.id]?.isPartial == true
+                || persistedPartialMessages[$0.id] != nil)
+        }.count
         if failed > 0 { parts.append("上次失败 \(failed) 条") }
         if timedOut > 0 { parts.append("上次超时 \(timedOut) 条") }
         if partial > 0 { parts.append("部分可用 \(partial) 条") }
@@ -90,7 +94,9 @@ struct SourcesView: View {
             case .ok:
                 return health[source.id]?.isHealthy == true
             case .partial:
+                guard source.enabled else { return false }
                 return health[source.id]?.isPartial == true
+                    || persistedPartialMessages[source.id] != nil
             case .failed:
                 guard source.enabled else { return false }
                 return persistedFailedIDs.contains(source.id)
@@ -382,7 +388,8 @@ struct SourcesView: View {
 
                 Text(statusText(status, id: source.id, enabled: source.enabled, checking: isChecking))
                     .font(Typo.micro)
-                    .foregroundStyle(status == nil ? Palette.ink3 : Palette.ink2)
+                    .foregroundStyle(status == nil && persistedPartialMessages[source.id] == nil
+                                     ? Palette.ink3 : Palette.ink2)
                     .lineLimit(1)
 
                 Spacer(minLength: 8)
@@ -547,6 +554,9 @@ struct SourcesView: View {
             if persistedTimeoutIDs.contains(id) {
                 return "上次检测超时，建议稍后重测"
             }
+            if let message = persistedPartialMessages[id] {
+                return "上次检测部分可用 · \(message)（可重测）"
+            }
             return "未检测"
         }
         switch status {
@@ -570,6 +580,7 @@ struct SourcesView: View {
         guard let status else {
             if persistedFailedIDs.contains(id) { return Palette.danger }
             if persistedTimeoutIDs.contains(id) { return Color(hex: 0xC08A3E) }
+            if persistedPartialMessages[id] != nil { return Color(hex: 0xC08A3E) }
             return Palette.ink3.opacity(0.6)
         }
         switch status {
@@ -592,6 +603,11 @@ struct SourcesView: View {
             }
             persistedFailedIDs = Set(((try? env.sources.invalidSources()) ?? []).map(\.id))
             persistedTimeoutIDs = Set(((try? env.sources.timeoutSources()) ?? []).map(\.id))
+            persistedPartialMessages = Dictionary(uniqueKeysWithValues: all.compactMap { source in
+                guard let result = source.lastCheckResult,
+                      result.hasPrefix("partial: ") else { return nil }
+                return (source.id, String(result.dropFirst("partial: ".count)))
+            })
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -850,22 +866,27 @@ struct SourcesView: View {
             text = "ok \(ms)ms \(count)"
             persistedFailedIDs.remove(source.id)
             persistedTimeoutIDs.remove(source.id)
+            persistedPartialMessages[source.id] = nil
         case .okDeep(let ms, let count, let chapters):
             text = "ok deep \(ms)ms \(count) \(chapters)"
             persistedFailedIDs.remove(source.id)
             persistedTimeoutIDs.remove(source.id)
+            persistedPartialMessages[source.id] = nil
         case .partial(let message):
             text = "partial: \(message)"
             persistedFailedIDs.remove(source.id)
             persistedTimeoutIDs.remove(source.id)
+            persistedPartialMessages[source.id] = message
         case .timeout:
             text = "timeout"
             persistedFailedIDs.remove(source.id)
             persistedTimeoutIDs.insert(source.id)
+            persistedPartialMessages[source.id] = nil
         case .failed(let message):
             text = "failed: \(message)"
             persistedFailedIDs.insert(source.id)
             persistedTimeoutIDs.remove(source.id)
+            persistedPartialMessages[source.id] = nil
         case .skipped(let reason):
             text = "skipped: \(reason)"
         }
